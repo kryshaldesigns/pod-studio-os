@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Bulk T-Shirt Design Generator — POD Studio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Anton&family=Archivo+Black&family=Oswald:wght@700&family=Playfair+Display:wght@900&family=Abril+Fatface&family=DM+Serif+Display&family=Bungee&family=Space+Grotesk:wght@700&family=Permanent+Marker&family=Caveat:wght@700&family=Fraunces:wght@900&family=DM+Sans:wght@400;600;700&display=swap"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:#FAF7F0;color:#1a1a1a;min-height:100vh}
+h1{font-size:18px;font-weight:700;letter-spacing:-0.3px}
+.header{background:#FAF7F0;border-bottom:2px solid #111;padding:14px 20px;display:flex;align-items:center;gap:12px}
+.header-badge{background:#111;color:#FAF7F0;font-size:10px;font-weight:700;letter-spacing:0.08em;padding:3px 8px;border-radius:2px}
+.layout{display:grid;grid-template-columns:280px 200px 1fr;height:calc(100vh - 57px);overflow:hidden}
+.panel{border-right:2px solid #111;padding:16px;overflow-y:auto;display:flex;flex-direction:column;gap:12px}
+.panel:last-child{border-right:none}
+.panel-title{font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#555;padding-bottom:8px;border-bottom:2px solid #111;margin-bottom:4px}
+label{font-size:11px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#555;display:block;margin-bottom:4px}
+input[type=text],textarea,select{width:100%;border:2px solid #111;border-radius:0;padding:8px 10px;font-family:'DM Sans',sans-serif;font-size:13px;background:#fff;color:#111;outline:none;transition:border-color 0.15s}
+input[type=text]:focus,textarea:focus,select:focus{border-color:#B84A1F}
+textarea{resize:vertical;min-height:120px;line-height:1.5}
+.btn{border:2px solid #111;background:#B84A1F;color:#fff;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:700;padding:9px 14px;cursor:pointer;letter-spacing:0.04em;text-transform:uppercase;transition:all 0.15s;width:100%}
+.btn:hover{background:#9a3d18}
+.btn-secondary{background:#FAF7F0;color:#111}
+.btn-secondary:hover{background:#eee}
+.btn-sm{padding:6px 10px;font-size:11px;width:auto}
+.template-chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:4px}
+.chip{border:2px solid #111;background:#fff;font-size:11px;font-weight:700;padding:4px 8px;cursor:pointer;letter-spacing:0.03em;transition:all 0.15s}
+.chip:hover,.chip.active{background:#111;color:#FAF7F0}
+.color-row{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:4px}
+.color-swatch{width:26px;height:26px;border:2px solid #111;cursor:pointer;transition:transform 0.15s;flex-shrink:0}
+.color-swatch:hover,.color-swatch.active{transform:scale(1.2);outline:2px solid #B84A1F;outline-offset:2px}
+.slider-row{display:flex;align-items:center;gap:8px}
+.slider-row input[type=range]{flex:1;accent-color:#B84A1F}
+.slider-val{font-size:11px;font-weight:700;min-width:28px;text-align:right}
+.radio-group{display:flex;gap:0}
+.radio-group button{flex:1;border:2px solid #111;border-right:none;background:#FAF7F0;font-family:'DM Sans',sans-serif;font-size:11px;font-weight:700;padding:6px 4px;cursor:pointer;letter-spacing:0.03em;text-transform:uppercase;transition:all 0.15s}
+.radio-group button:last-child{border-right:2px solid #111}
+.radio-group button.active{background:#111;color:#FAF7F0}
+.preview-area{background:#e8e3d9;display:flex;flex-direction:column;overflow:hidden}
+.preview-toolbar{background:#FAF7F0;border-bottom:2px solid #111;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.preview-grid{flex:1;overflow-y:auto;padding:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:14px;align-content:start}
+.design-card{background:#fff;border:2px solid #111;padding:10px;display:flex;flex-direction:column;gap:8px}
+.design-canvas-wrap{position:relative;width:100%;aspect-ratio:5/6;overflow:hidden;cursor:pointer}
+.design-canvas-wrap canvas,.design-canvas-wrap .design-preview{width:100%!important;height:100%!important;object-fit:contain}
+.design-label{font-size:10px;font-weight:700;color:#555;letter-spacing:0.04em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.card-btns{display:flex;gap:6px}
+.bg-preview{display:flex;gap:6px;align-items:center}
+.bg-btn{border:2px solid #111;padding:4px 8px;font-size:10px;font-weight:700;cursor:pointer;background:#FAF7F0;transition:all 0.15s;letter-spacing:0.04em}
+.bg-btn.active{background:#111;color:#FAF7F0}
+.empty-state{grid-column:1/-1;text-align:center;padding:60px 20px;color:#999;font-size:13px}
+.empty-state .big{font-size:32px;margin-bottom:10px}
+/* Hidden hi-res render area */
+#hiresArea{position:fixed;left:-9999px;top:0;width:4500px;height:5400px;pointer-events:none;z-index:-1}
+.hires-design{width:4500px;height:5400px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:400px}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div style="font-size:20px">👕</div>
+  <h1>Bulk T-Shirt Design Generator</h1>
+  <span class="header-badge">POD STUDIO</span>
+  <a href="javascript:history.back()" style="margin-left:auto;font-size:12px;font-weight:700;color:#555;text-decoration:none;border:2px solid #111;padding:4px 10px">← Back to Studio</a>
+</div>
+
+<div class="layout">
+
+  <!-- LEFT: Template Builder -->
+  <div class="panel">
+    <div class="panel-title">Template Builder</div>
+
+    <div>
+      <label>Saved Templates</label>
+      <div class="template-chips" id="savedChips">
+        <span style="font-size:11px;color:#999">None saved yet</span>
+      </div>
+    </div>
+
+    <div>
+      <label>Template (use {placeholder} syntax)</label>
+      <input type="text" id="template" value="{hobby} is my cardio" placeholder="{hobby} is my cardio"/>
+    </div>
+
+    <div>
+      <label>Values — one per line<br><span style="font-weight:400;text-transform:none;letter-spacing:0">(CSV if multiple placeholders)</span></label>
+      <textarea id="values" placeholder="Fishing&#10;Hiking&#10;Running&#10;Yoga&#10;Gaming&#10;Baking"></textarea>
+    </div>
+
+    <div style="display:flex;gap:6px">
+      <button class="btn btn-secondary btn-sm" onclick="saveTemplate()">Save Template</button>
+    </div>
+
+    <div>
+      <label>Pre-built Templates</label>
+      <div style="display:flex;flex-direction:column;gap:4px">
+        <button class="chip" onclick="loadPreset('{hobby} is my cardio','Fishing\nHiking\nRunning\nYoga\nGaming')">{hobby} is my cardio</button>
+        <button class="chip" onclick="loadPreset('Powered by coffee and {noun}','Anxiety\nChaos\nVibes\nDreams')"  >Powered by coffee and {noun}</button>
+        <button class="chip" onclick="loadPreset('Team {name}','Family\nDad\nMom\nBoss')">Team {name}</button>
+        <button class="chip" onclick="loadPreset('I paused my {activity} to be here','Netflix\nNapping\nReading\nGaming')">I paused my {activity}</button>
+        <button class="chip" onclick="loadPreset('{name}\'s reading list','Mia\nSam\nAlex\nJordan')">{name}'s reading list</button>
+      </div>
+    </div>
+
+    <button class="btn" onclick="generate()">⚡ Generate Designs</button>
+  </div>
+
+  <!-- MIDDLE: Design Controls -->
+  <div class="panel">
+    <div class="panel-title">Design Controls</div>
+
+    <div>
+      <label>Font</label>
+      <select id="font" onchange="livePreview()">
+        <option value="'Bebas Neue',sans-serif">Bebas Neue — Bold Condensed</option>
+        <option value="'Anton',sans-serif">Anton — Heavy Display</option>
+        <option value="'Archivo Black',sans-serif">Archivo Black — Bold Sans</option>
+        <option value="'Oswald',sans-serif">Oswald — Condensed Sans</option>
+        <option value="'Playfair Display',serif">Playfair Display — Elegant Serif</option>
+        <option value="'Abril Fatface',serif">Abril Fatface — Retro Serif</option>
+        <option value="'DM Serif Display',serif">DM Serif Display — Modern Serif</option>
+        <option value="'Bungee',sans-serif">Bungee — Athletic Display</option>
+        <option value="'Space Grotesk',sans-serif">Space Grotesk — Geometric</option>
+        <option value="'Permanent Marker',cursive">Permanent Marker — Handwritten</option>
+        <option value="'Caveat',cursive">Caveat — Script</option>
+        <option value="'Fraunces',serif">Fraunces — Editorial Serif</option>
+      </select>
+    </div>
+
+    <div>
+      <label>Text Colour</label>
+      <div class="color-row">
+        <div class="color-swatch active" style="background:#000000" data-color="#000000" onclick="setColor(this,'text')"></div>
+        <div class="color-swatch" style="background:#ffffff;border-color:#999" data-color="#ffffff" onclick="setColor(this,'text')"></div>
+        <div class="color-swatch" style="background:#F5E6D3" data-color="#F5E6D3" onclick="setColor(this,'text')"></div>
+        <div class="color-swatch" style="background:#B84A1F" data-color="#B84A1F" onclick="setColor(this,'text')"></div>
+        <div class="color-swatch" style="background:#2D4F3F" data-color="#2D4F3F" onclick="setColor(this,'text')"></div>
+        <div class="color-swatch" style="background:#D4A017" data-color="#D4A017" onclick="setColor(this,'text')"></div>
+        <input type="color" value="#000000" id="textColorPicker" style="width:26px;height:26px;border:2px solid #111;cursor:pointer;padding:0" onchange="setColorFromPicker('text',this.value)"/>
+      </div>
+    </div>
+
+    <div>
+      <label>Background Preview</label>
+      <div class="bg-preview" id="bgBtns">
+        <button class="bg-btn active" onclick="setBg('transparent',this)">Transparent</button>
+        <button class="bg-btn" onclick="setBg('white',this)">White</button>
+        <button class="bg-btn" onclick="setBg('black',this)">Black</button>
+      </div>
+      <div style="font-size:10px;color:#999;margin-top:4px">Export is always transparent PNG</div>
+    </div>
+
+    <div>
+      <label>Text Alignment</label>
+      <div class="radio-group" id="alignGroup">
+        <button class="active" onclick="setOpt('align','left',this)">Left</button>
+        <button class="active" onclick="setOpt('align','center',this)" style="border-left:none">Center</button>
+        <button onclick="setOpt('align','right',this)" style="border-left:none">Right</button>
+      </div>
+    </div>
+
+    <div>
+      <label>Line Break Mode</label>
+      <div class="radio-group" id="lineGroup">
+        <button class="active" onclick="setOpt('lineMode','single',this)">Single</button>
+        <button onclick="setOpt('lineMode','word',this)" style="border-left:none">Word/Line</button>
+        <button onclick="setOpt('lineMode','two',this)" style="border-left:none">Two-line</button>
+      </div>
+    </div>
+
+    <div>
+      <label>Text Transform</label>
+      <div class="radio-group" id="transformGroup">
+        <button onclick="setOpt('transform','none',this)">None</button>
+        <button class="active" onclick="setOpt('transform','uppercase',this)" style="border-left:none">UPPER</button>
+        <button onclick="setOpt('transform','lowercase',this)" style="border-left:none">lower</button>
+      </div>
+    </div>
+
+    <div>
+      <label>Font Size <span class="slider-val" id="fontSizeVal">120px</span></label>
+      <div class="slider-row">
+        <input type="range" min="40" max="300" value="120" id="fontSize" oninput="document.getElementById('fontSizeVal').textContent=this.value+'px';livePreview()"/>
+      </div>
+    </div>
+
+    <div>
+      <label>Letter Spacing <span class="slider-val" id="spacingVal">0px</span></label>
+      <div class="slider-row">
+        <input type="range" min="-10" max="40" value="0" id="letterSpacing" oninput="document.getElementById('spacingVal').textContent=this.value+'px';livePreview()"/>
+      </div>
+    </div>
+
+    <div>
+      <label>Max Text Width <span class="slider-val" id="widthVal">80%</span></label>
+      <div class="slider-row">
+        <input type="range" min="30" max="100" value="80" id="maxWidth" oninput="document.getElementById('widthVal').textContent=this.value+'%';livePreview()"/>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT: Preview Grid -->
+  <div class="preview-area">
+    <div class="preview-toolbar">
+      <div style="font-size:12px;font-weight:700;color:#555" id="designCount">0 designs</div>
+      <button class="btn btn-sm" onclick="downloadAll()" id="dlAllBtn" style="display:none">⬇ Download All (ZIP)</button>
+    </div>
+    <div class="preview-grid" id="previewGrid">
+      <div class="empty-state">
+        <div class="big">👕</div>
+        Fill in the template and values, then hit <strong>Generate Designs</strong>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Hidden hi-res area -->
+<div id="hiresArea"></div>
+
+<script>
+// ─── STATE ───
+const state = {
+  designs: [],
+  textColor: '#000000',
+  bgMode: 'transparent',
+  align: 'center',
+  lineMode: 'single',
+  transform: 'uppercase',
+};
+
+// Load saved templates
+function loadSavedTemplates(){
+  const saved = JSON.parse(localStorage.getItem('tshirt_templates')||'[]');
+  const chips = document.getElementById('savedChips');
+  if(!saved.length){chips.innerHTML='<span style="font-size:11px;color:#999">None saved yet</span>';return;}
+  chips.innerHTML = saved.map((t,i)=>`
+    <span class="chip" onclick="loadSaved(${i})" title="${t.template}">${t.template.substring(0,20)}${t.template.length>20?'…':''}</span>
+  `).join('');
+}
+loadSavedTemplates();
+
+function saveTemplate(){
+  const tpl = document.getElementById('template').value.trim();
+  const vals = document.getElementById('values').value.trim();
+  if(!tpl) return alert('Enter a template first');
+  const saved = JSON.parse(localStorage.getItem('tshirt_templates')||'[]');
+  saved.unshift({template:tpl, values:vals, font:document.getElementById('font').value,
+    textColor:state.textColor, align:state.align, lineMode:state.lineMode, transform:state.transform,
+    fontSize:document.getElementById('fontSize').value, spacing:document.getElementById('letterSpacing').value});
+  localStorage.setItem('tshirt_templates', JSON.stringify(saved.slice(0,10)));
+  loadSavedTemplates();
+}
+
+function loadSaved(i){
+  const saved = JSON.parse(localStorage.getItem('tshirt_templates')||'[]');
+  const t = saved[i];
+  document.getElementById('template').value = t.template;
+  document.getElementById('values').value = t.values;
+  document.getElementById('font').value = t.font;
+  document.getElementById('fontSize').value = t.fontSize||120;
+  document.getElementById('fontSizeVal').textContent = (t.fontSize||120)+'px';
+  document.getElementById('letterSpacing').value = t.spacing||0;
+  document.getElementById('spacingVal').textContent = (t.spacing||0)+'px';
+  state.textColor = t.textColor||'#000000';
+  state.align = t.align||'center';
+  state.lineMode = t.lineMode||'single';
+  state.transform = t.transform||'uppercase';
+}
+
+function loadPreset(tpl, vals){
+  document.getElementById('template').value = tpl;
+  document.getElementById('values').value = vals;
+}
+
+// ─── CONTROLS ───
+function setColor(el, type){
+  document.querySelectorAll('.color-swatch').forEach(s=>s.classList.remove('active'));
+  el.classList.add('active');
+  state.textColor = el.dataset.color;
+  livePreview();
+}
+function setColorFromPicker(type, val){ state.textColor = val; livePreview(); }
+function setBg(mode, el){
+  state.bgMode = mode;
+  document.querySelectorAll('.bg-btn').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');
+  livePreview();
+}
+function setOpt(key, val, el){
+  state[key] = val;
+  el.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');
+  livePreview();
+}
+
+// ─── PARSE TEMPLATE ───
+function parseTemplate(tpl, line){
+  const placeholders = [...tpl.matchAll(/\{(\w+)\}/g)].map(m=>m[1]);
+  if(placeholders.length === 0) return tpl;
+  if(placeholders.length === 1){
+    return tpl.replace(/\{(\w+)\}/g, line.trim());
+  }
+  // CSV mode
+  const parts = line.split(',').map(s=>s.trim());
+  let result = tpl;
+  placeholders.forEach((p,i)=>{ result = result.replace('{'+p+'}', parts[i]||''); });
+  return result;
+}
+
+function applyTransform(text){
+  if(state.transform==='uppercase') return text.toUpperCase();
+  if(state.transform==='lowercase') return text.toLowerCase();
+  return text;
+}
+
+function getLines(text){
+  const t = applyTransform(text);
+  if(state.lineMode==='word') return t.split(' ').filter(Boolean);
+  if(state.lineMode==='two'){
+    const words = t.split(' ').filter(Boolean);
+    const mid = Math.ceil(words.length/2);
+    return [words.slice(0,mid).join(' '), words.slice(mid).join(' ')];
+  }
+  return [t];
+}
+
+// ─── GENERATE ───
+function generate(){
+  const tpl = document.getElementById('template').value.trim();
+  const rawVals = document.getElementById('values').value.trim().split('\n').filter(Boolean);
+  if(!tpl || !rawVals.length){ alert('Fill in the template and at least one value'); return; }
+
+  state.designs = rawVals.map((v,i)=>({
+    id: i,
+    text: parseTemplate(tpl, v),
+    rawVal: v,
+    slug: v.trim().toLowerCase().replace(/[^a-z0-9]+/g,'-'),
+    tplSlug: tpl.replace(/\{[^}]+\}/g,'X').toLowerCase().replace(/[^a-z0-9]+/g,'-'),
+  }));
+
+  renderGrid();
+}
+
+function getBgStyle(){
+  if(state.bgMode==='white') return '#ffffff';
+  if(state.bgMode==='black') return '#000000';
+  // checker pattern
+  return 'repeating-conic-gradient(#ccc 0% 25%, #eee 0% 50%) 0 0/20px 20px';
+}
+
+function renderGrid(){
+  const grid = document.getElementById('previewGrid');
+  document.getElementById('designCount').textContent = state.designs.length+' design'+(state.designs.length!==1?'s':'');
+  document.getElementById('dlAllBtn').style.display = state.designs.length ? '' : 'none';
+
+  if(!state.designs.length){
+    grid.innerHTML = '<div class="empty-state"><div class="big">👕</div>No designs yet</div>';
+    return;
+  }
+
+  grid.innerHTML = state.designs.map((d,i)=>`
+    <div class="design-card">
+      <div class="design-canvas-wrap" onclick="enlargePreview(${i})" title="Click to enlarge">
+        ${buildPreviewSVG(d, 450, 540)}
+      </div>
+      <div class="design-label">${d.text}</div>
+      <div class="card-btns">
+        <button class="btn btn-secondary btn-sm" style="flex:1;font-size:10px" onclick="downloadOne(${i})">⬇ PNG</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function buildPreviewSVG(d, w, h){
+  const lines = getLines(d.text);
+  const font = document.getElementById('font').value;
+  const fontSize = Math.round(parseInt(document.getElementById('fontSize').value) * w/4500);
+  const spacing = parseInt(document.getElementById('letterSpacing').value) * w/4500;
+  const maxW = parseInt(document.getElementById('maxWidth').value);
+  const lineH = fontSize * 1.15;
+  const totalH = lines.length * lineH;
+  const startY = (h - totalH)/2 + fontSize*0.8;
+  const anchor = state.align==='left'?'start':state.align==='right'?'end':'middle';
+  const x = state.align==='left'? w*0.05 : state.align==='right'? w*0.95 : w/2;
+
+  const bg = state.bgMode==='white'?`<rect width="${w}" height="${h}" fill="#ffffff"/>`
+    : state.bgMode==='black'?`<rect width="${w}" height="${h}" fill="#000000"/>`
+    : `<pattern id="checker" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse">
+        <rect width="10" height="10" fill="#ccc"/><rect x="10" y="10" width="10" height="10" fill="#ccc"/>
+        <rect x="10" y="0" width="10" height="10" fill="#eee"/><rect x="0" y="10" width="10" height="10" fill="#eee"/>
+       </pattern><rect width="${w}" height="${h}" fill="url(#checker)"/>`;
+
+  const texts = lines.map((line,i)=>`
+    <text x="${x}" y="${startY + i*lineH}"
+      text-anchor="${anchor}"
+      font-family="${font}"
+      font-size="${fontSize}"
+      fill="${state.textColor}"
+      letter-spacing="${spacing}"
+      style="max-width:${maxW}%">${line}</text>
+  `).join('');
+
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}">
+    <defs>${state.bgMode==='transparent'?`<pattern id="checker" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse"><rect width="10" height="10" fill="#ccc"/><rect x="10" y="10" width="10" height="10" fill="#ccc"/><rect x="10" y="0" width="10" height="10" fill="#eee"/><rect x="0" y="10" width="10" height="10" fill="#eee"/></pattern>`:''}</defs>
+    ${bg}${texts}
+  </svg>`;
+}
+
+function livePreview(){
+  if(!state.designs.length) return;
+  renderGrid();
+}
+
+// ─── DOWNLOAD ───
+async function downloadOne(idx){
+  const d = state.designs[idx];
+  const svg = buildHiresSVG(d);
+  const blob = await svgToPngBlob(svg, 4500, 5400);
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href=url; a.download=`${d.tplSlug}-${d.slug}.png`; a.click();
+  URL.revokeObjectURL(url);
+}
+
+function buildHiresSVG(d){
+  const lines = getLines(d.text);
+  const font = document.getElementById('font').value;
+  const fontSize = parseInt(document.getElementById('fontSize').value);
+  const spacing = parseInt(document.getElementById('letterSpacing').value);
+  const lineH = fontSize*1.15;
+  const totalH = lines.length*lineH;
+  const startY = (5400-totalH)/2 + fontSize*0.8;
+  const anchor = state.align==='left'?'start':state.align==='right'?'end':'middle';
+  const x = state.align==='left'?225:state.align==='right'?4275:2250;
+  const texts = lines.map((line,i)=>`
+    <text x="${x}" y="${startY+i*lineH}" text-anchor="${anchor}"
+      font-family="${font}" font-size="${fontSize}" fill="${state.textColor}"
+      letter-spacing="${spacing}">${line}</text>
+  `).join('');
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 4500 5400" width="4500" height="5400">
+    ${texts}
+  </svg>`;
+}
+
+async function svgToPngBlob(svgStr, w, h){
+  await document.fonts.ready;
+  return new Promise(res=>{
+    const img = new Image();
+    const blob = new Blob([svgStr],{type:'image/svg+xml'});
+    const url = URL.createObjectURL(blob);
+    img.onload = ()=>{
+      const canvas = document.createElement('canvas');
+      canvas.width=w; canvas.height=h;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img,0,0,w,h);
+      URL.revokeObjectURL(url);
+      canvas.toBlob(b=>res(b),'image/png');
+    };
+    img.src = url;
+  });
+}
+
+async function downloadAll(){
+  const btn = document.getElementById('dlAllBtn');
+  btn.textContent='Generating…'; btn.disabled=true;
+  const zip = new JSZip();
+  for(const d of state.designs){
+    const svg = buildHiresSVG(d);
+    const blob = await svgToPngBlob(svg,4500,5400);
+    zip.file(`${d.tplSlug}-${d.slug}.png`, blob);
+  }
+  const zipBlob = await zip.generateAsync({type:'blob'});
+  const url = URL.createObjectURL(zipBlob);
+  const a = document.createElement('a');
+  const tplSlug = document.getElementById('template').value.replace(/\{[^}]+\}/g,'X').toLowerCase().replace(/[^a-z0-9]+/g,'-');
+  a.href=url; a.download=`${tplSlug}-designs.zip`; a.click();
+  URL.revokeObjectURL(url);
+  btn.textContent='⬇ Download All (ZIP)'; btn.disabled=false;
+}
+
+function enlargePreview(idx){
+  const d = state.designs[idx];
+  const overlay = document.createElement('div');
+  overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:999;display:flex;align-items:center;justify-content:center;cursor:pointer';
+  overlay.innerHTML = `<div style="max-width:500px;max-height:90vh;width:90%">${buildPreviewSVG(d,450,540)}</div>`;
+  overlay.onclick=()=>overlay.remove();
+  document.body.appendChild(overlay);
+}
+</script>
+</body>
+</html>

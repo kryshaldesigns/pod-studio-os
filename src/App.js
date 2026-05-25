@@ -913,10 +913,7 @@ const DesignerDashboard = ({ state, update, addNotification }) => {
       slogan: "bulk_slogan___graphic_design_generator",
       pattern: "Pattern-Fill_Text_Design_Generator",
     };
-    // Open the corresponding standalone HTML tool in a new tab
-    // In production these will be served as /tools/{id}.html
-    // For now we notify the user to open the file
-    alert(`Opening ${id} tool…\n\nIn production this opens /tools/${files[id]}.html in a new tab.\n\nFor now, open the HTML file directly from the project files.`);
+    window.open(`/tools/${files[id]}.html`, "_blank");
   };
 
   const tabs = [

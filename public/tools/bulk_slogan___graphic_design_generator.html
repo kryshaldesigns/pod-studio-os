@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Bulk Slogan + Graphic Generator — POD Studio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Anton&family=Archivo+Black&family=Oswald:wght@700&family=Playfair+Display:wght@900&family=Abril+Fatface&family=DM+Serif+Display&family=Bungee&family=Space+Grotesk:wght@700&family=Permanent+Marker&family=Caveat:wght@700&family=Fraunces:wght@900&family=DM+Sans:wght@400;600;700&display=swap"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:#FAF7F0;color:#1a1a1a;min-height:100vh}
+.header{background:#FAF7F0;border-bottom:2px solid #111;padding:14px 20px;display:flex;align-items:center;gap:12px}
+.header-badge{background:#111;color:#FAF7F0;font-size:10px;font-weight:700;letter-spacing:0.08em;padding:3px 8px;border-radius:2px}
+.layout{display:grid;grid-template-columns:270px 220px 1fr;height:calc(100vh - 57px);overflow:hidden}
+.panel{border-right:2px solid #111;padding:16px;overflow-y:auto;display:flex;flex-direction:column;gap:11px}
+.panel-title{font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#555;padding-bottom:8px;border-bottom:2px solid #111}
+label{font-size:11px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#555;display:block;margin-bottom:4px}
+input[type=text],textarea,select{width:100%;border:2px solid #111;padding:8px 10px;font-family:'DM Sans',sans-serif;font-size:13px;background:#fff;color:#111;outline:none}
+input[type=text]:focus,textarea:focus,select:focus{border-color:#B84A1F}
+textarea{resize:vertical;min-height:100px;line-height:1.5}
+.btn{border:2px solid #111;background:#B84A1F;color:#fff;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:700;padding:9px 14px;cursor:pointer;letter-spacing:0.04em;text-transform:uppercase;width:100%}
+.btn:hover{background:#9a3d18}
+.btn-secondary{background:#FAF7F0;color:#111}
+.btn-secondary:hover{background:#eee}
+.btn-sm{padding:6px 10px;font-size:11px;width:auto}
+.color-row{display:flex;gap:5px;flex-wrap:wrap;margin-top:4px}
+.color-swatch{width:24px;height:24px;border:2px solid #111;cursor:pointer;transition:transform 0.15s;flex-shrink:0}
+.color-swatch:hover,.color-swatch.active{transform:scale(1.2);outline:2px solid #B84A1F;outline-offset:2px}
+.slider-row{display:flex;align-items:center;gap:8px}
+.slider-row input[type=range]{flex:1;accent-color:#B84A1F}
+.slider-val{font-size:11px;font-weight:700;min-width:30px;text-align:right}
+.radio-group{display:flex;gap:0}
+.radio-group button{flex:1;border:2px solid #111;border-right:none;background:#FAF7F0;font-family:'DM Sans',sans-serif;font-size:10px;font-weight:700;padding:6px 2px;cursor:pointer;letter-spacing:0.02em;text-transform:uppercase}
+.radio-group button:last-child{border-right:2px solid #111}
+.radio-group button.active{background:#111;color:#FAF7F0}
+.upload-zone{border:2px dashed #999;padding:16px;text-align:center;cursor:pointer;transition:border-color 0.15s;background:#fff}
+.upload-zone:hover{border-color:#B84A1F}
+.upload-zone.has-file{border-style:solid;border-color:#111;background:#f0ece4}
+.preview-area{background:#e8e3d9;display:flex;flex-direction:column;overflow:hidden}
+.preview-toolbar{background:#FAF7F0;border-bottom:2px solid #111;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}
+.preview-grid{flex:1;overflow-y:auto;padding:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px;align-content:start}
+.design-card{background:#fff;border:2px solid #111;padding:10px}
+.design-label{font-size:10px;font-weight:700;color:#555;margin:6px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.card-btns{display:flex;gap:6px}
+.empty-state{grid-column:1/-1;text-align:center;padding:60px 20px;color:#999;font-size:13px}
+.section-divider{border:none;border-top:2px solid #111;margin:4px 0}
+.preset-chip{border:2px solid #111;background:#fff;font-size:10px;font-weight:700;padding:3px 7px;cursor:pointer;letter-spacing:0.03em;display:inline-block;margin:2px}
+.preset-chip:hover,.preset-chip.active{background:#111;color:#FAF7F0}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div style="font-size:20px">🎨</div>
+  <h1 style="font-size:18px;font-weight:700">Bulk Slogan + Graphic Generator</h1>
+  <span class="header-badge">POD STUDIO</span>
+  <a href="javascript:history.back()" style="margin-left:auto;font-size:12px;font-weight:700;color:#555;text-decoration:none;border:2px solid #111;padding:4px 10px">← Back to Studio</a>
+</div>
+
+<div class="layout">
+
+  <!-- LEFT: Graphic & Slogan Input -->
+  <div class="panel">
+    <div class="panel-title">Graphic & Slogans</div>
+
+    <div>
+      <label>Upload Graphic (PNG preferred)</label>
+      <div class="upload-zone" id="uploadZone" onclick="document.getElementById('graphicFile').click()">
+        <div id="uploadText">
+          <div style="font-size:24px;margin-bottom:6px">🖼️</div>
+          <div style="font-size:12px;font-weight:600">Click to upload<br><span style="color:#999;font-weight:400">PNG / JPG / WebP — transparent PNG best</span></div>
+        </div>
+      </div>
+      <input type="file" id="graphicFile" accept="image/png,image/jpeg,image/webp" style="display:none" onchange="handleGraphicUpload(this)"/>
+    </div>
+
+    <div>
+      <label>Graphic Size <span class="slider-val" id="graphicSizeVal">55%</span></label>
+      <input type="range" min="10" max="90" value="55" id="graphicSize" style="width:100%;accent-color:#B84A1F" oninput="document.getElementById('graphicSizeVal').textContent=this.value+'%';refreshPreviews()"/>
+    </div>
+
+    <div>
+      <label>Vertical Position <span class="slider-val" id="graphicPosVal">50%</span></label>
+      <input type="range" min="5" max="95" value="50" id="graphicPos" style="width:100%;accent-color:#B84A1F" oninput="document.getElementById('graphicPosVal').textContent=this.value+'%';refreshPreviews()"/>
+    </div>
+
+    <div>
+      <label>Graphic Alignment</label>
+      <div class="radio-group" id="graphicAlignGroup">
+        <button onclick="setOpt('graphicAlign','left',this,'graphicAlignGroup')">Left</button>
+        <button class="active" onclick="setOpt('graphicAlign','center',this,'graphicAlignGroup')" style="border-left:none">Center</button>
+        <button onclick="setOpt('graphicAlign','right',this,'graphicAlignGroup')" style="border-left:none">Right</button>
+      </div>
+    </div>
+
+    <hr class="section-divider"/>
+
+    <div>
+      <label>Slogans — one per line</label>
+      <textarea id="slogans" placeholder="Raised on sweet tea and Jesus&#10;Born to be wild, forced to work&#10;Just a girl who loves horses&#10;Small town girl, big city dreams&#10;Country roads, take me home&#10;Blessed and obsessed"></textarea>
+    </div>
+
+    <div>
+      <label>Static Sub-text (optional)</label>
+      <input type="text" id="subText" placeholder="e.g. EST. 2024  or  NASHVILLE, TN" oninput="refreshPreviews()"/>
+    </div>
+
+    <div style="display:flex;gap:6px">
+      <button class="btn btn-secondary btn-sm" onclick="savePreset()">Save Preset</button>
+      <button class="btn btn-sm" onclick="generate()">⚡ Generate</button>
+    </div>
+
+    <div id="savedPresets"></div>
+  </div>
+
+  <!-- MIDDLE: Design Controls -->
+  <div class="panel">
+    <div class="panel-title">Design Controls</div>
+
+    <div>
+      <label>Layout Preset</label>
+      <select id="layoutPreset" onchange="applyLayoutPreset(this.value)">
+        <option value="vintage">Vintage Athletic</option>
+        <option value="minimal">Minimalist Stack</option>
+        <option value="simple">Simple Below</option>
+        <option value="custom">Custom</option>
+      </select>
+    </div>
+
+    <div>
+      <label>Slogan Position</label>
+      <div class="radio-group" id="sloganPosGroup">
+        <button class="active" onclick="setOpt('sloganPos','above',this,'sloganPosGroup')">Above</button>
+        <button onclick="setOpt('sloganPos','below',this,'sloganPosGroup')" style="border-left:none">Below</button>
+      </div>
+    </div>
+
+    <hr class="section-divider"/>
+    <div style="font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#B84A1F">Slogan Text</div>
+
+    <div>
+      <label>Font</label>
+      <select id="sloganFont" onchange="refreshPreviews()">
+        <option value="'Bebas Neue',sans-serif">Bebas Neue</option>
+        <option value="'Anton',sans-serif">Anton</option>
+        <option value="'Archivo Black',sans-serif">Archivo Black</option>
+        <option value="'Oswald',sans-serif">Oswald</option>
+        <option value="'Playfair Display',serif">Playfair Display</option>
+        <option value="'Abril Fatface',serif">Abril Fatface</option>
+        <option value="'DM Serif Display',serif">DM Serif Display</option>
+        <option value="'Bungee',sans-serif">Bungee</option>
+        <option value="'Space Grotesk',sans-serif">Space Grotesk</option>
+        <option value="'Permanent Marker',cursive">Permanent Marker</option>
+        <option value="'Caveat',cursive">Caveat</option>
+        <option value="'Fraunces',serif">Fraunces</option>
+      </select>
+    </div>
+
+    <div>
+      <label>Text Colour</label>
+      <div class="color-row">
+        <div class="color-swatch active" style="background:#000000" data-color="#000000" onclick="setSloganColor(this)"></div>
+        <div class="color-swatch" style="background:#ffffff;border-color:#aaa" data-color="#ffffff" onclick="setSloganColor(this)"></div>
+        <div class="color-swatch" style="background:#F5E6D3" data-color="#F5E6D3" onclick="setSloganColor(this)"></div>
+        <div class="color-swatch" style="background:#B84A1F" data-color="#B84A1F" onclick="setSloganColor(this)"></div>
+        <div class="color-swatch" style="background:#2D4F3F" data-color="#2D4F3F" onclick="setSloganColor(this)"></div>
+        <div class="color-swatch" style="background:#D4A017" data-color="#D4A017" onclick="setSloganColor(this)"></div>
+        <input type="color" value="#000000" style="width:24px;height:24px;border:2px solid #111;cursor:pointer;padding:0" onchange="state.sloganColor=this.value;refreshPreviews()"/>
+      </div>
+    </div>
+
+    <div>
+      <label>Font Size <span class="slider-val" id="sloganSizeVal">100px</span></label>
+      <input type="range" min="30" max="250" value="100" id="sloganSize" style="width:100%;accent-color:#B84A1F" oninput="document.getElementById('sloganSizeVal').textContent=this.value+'px';refreshPreviews()"/>
+    </div>
+
+    <div>
+      <label>Letter Spacing <span class="slider-val" id="sloganSpacingVal">0px</span></label>
+      <input type="range" min="-10" max="30" value="0" id="sloganSpacing" style="width:100%;accent-color:#B84A1F" oninput="document.getElementById('sloganSpacingVal').textContent=this.value+'px';refreshPreviews()"/>
+    </div>
+
+    <div>
+      <label>Text Transform</label>
+      <div class="radio-group" id="transformGroup">
+        <button onclick="setOpt('transform','none',this,'transformGroup')">None</button>
+        <button class="active" onclick="setOpt('transform','uppercase',this,'transformGroup')" style="border-left:none">UPPER</button>
+        <button onclick="setOpt('transform','lowercase',this,'transformGroup')" style="border-left:none">lower</button>
+      </div>
+    </div>
+
+    <div>
+      <label>Text Effect</label>
+      <select id="textEffect" onchange="refreshPreviews()">
+        <option value="straight">Straight</option>
+        <option value="arch-up">Arch Up</option>
+        <option value="arch-down">Arch Down</option>
+        <option value="wave">Wave</option>
+      </select>
+    </div>
+
+    <div id="curveRow">
+      <label>Curve Intensity <span class="slider-val" id="curveVal">50%</span></label>
+      <input type="range" min="0" max="100" value="50" id="curveIntensity" style="width:100%;accent-color:#B84A1F" oninput="document.getElementById('curveVal').textContent=this.value+'%';refreshPreviews()"/>
+    </div>
+
+    <hr class="section-divider"/>
+
+    <div>
+      <label>Background Preview</label>
+      <div class="radio-group" id="bgGroup">
+        <button class="active" onclick="setOpt('bgMode','transparent',this,'bgGroup')">Transp.</button>
+        <button onclick="setOpt('bgMode','white',this,'bgGroup')" style="border-left:none">White</button>
+        <button onclick="setOpt('bgMode','black',this,'bgGroup')" style="border-left:none">Black</button>
+      </div>
+      <div style="font-size:10px;color:#999;margin-top:3px">Export always transparent</div>
+    </div>
+  </div>
+
+  <!-- RIGHT: Preview Grid -->
+  <div class="preview-area">
+    <div class="preview-toolbar">
+      <div style="font-size:12px;font-weight:700;color:#555" id="designCount">0 designs</div>
+      <button class="btn btn-sm" onclick="downloadAll()" id="dlAllBtn" style="display:none">⬇ Download All (ZIP)</button>
+    </div>
+    <div class="preview-grid" id="previewGrid">
+      <div class="empty-state">
+        <div style="font-size:32px;margin-bottom:10px">🎨</div>
+        Upload a graphic, enter slogans, then hit <strong>Generate</strong>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const state = {
+  designs:[],
+  graphicDataUrl:null,
+  sloganColor:'#000000',
+  sloganPos:'above',
+  graphicAlign:'center',
+  bgMode:'transparent',
+  transform:'uppercase',
+};
+
+// ─── GRAPHIC UPLOAD ───
+function handleGraphicUpload(input){
+  const file = input.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = e=>{
+    state.graphicDataUrl = e.target.result;
+    const zone = document.getElementById('uploadZone');
+    zone.classList.add('has-file');
+    document.getElementById('uploadText').innerHTML = `<img src="${e.target.result}" style="max-height:80px;max-width:100%;object-fit:contain"/><div style="font-size:11px;color:#555;margin-top:4px;font-weight:600">${file.name}</div>`;
+    refreshPreviews();
+  };
+  reader.readAsDataURL(file);
+}
+
+// ─── CONTROLS ───
+function setOpt(key, val, el, groupId){
+  state[key]=val;
+  document.getElementById(groupId).querySelectorAll('button').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');
+  refreshPreviews();
+}
+function setSloganColor(el){
+  document.querySelectorAll('.color-swatch').forEach(s=>s.classList.remove('active'));
+  el.classList.add('active');
+  state.sloganColor=el.dataset.color;
+  refreshPreviews();
+}
+function applyLayoutPreset(val){
+  const doc = document;
+  if(val==='vintage'){
+    state.sloganPos='above';
+    doc.getElementById('sloganPosGroup').querySelectorAll('button')[0].click();
+    doc.getElementById('textEffect').value='arch-up';
+  } else if(val==='minimal'){
+    state.sloganPos='above';
+    doc.getElementById('sloganPosGroup').querySelectorAll('button')[0].click();
+    doc.getElementById('textEffect').value='straight';
+  } else if(val==='simple'){
+    state.sloganPos='below';
+    doc.getElementById('sloganPosGroup').querySelectorAll('button')[1].click();
+    doc.getElementById('textEffect').value='straight';
+  }
+  refreshPreviews();
+}
+
+function applyTransform(t){
+  if(state.transform==='uppercase') return t.toUpperCase();
+  if(state.transform==='lowercase') return t.toLowerCase();
+  return t;
+}
+
+// ─── GENERATE ───
+function generate(){
+  const rawSlogans = document.getElementById('slogans').value.trim().split('\n').filter(Boolean);
+  if(!rawSlogans.length){ alert('Enter at least one slogan'); return; }
+  state.designs = rawSlogans.map((s,i)=>({
+    id:i, slogan:s.trim(),
+    slug:s.trim().toLowerCase().replace(/[^a-z0-9]+/g,'-')
+  }));
+  renderGrid();
+}
+
+function refreshPreviews(){
+  if(state.designs.length) renderGrid();
+}
+
+function renderGrid(){
+  const grid = document.getElementById('previewGrid');
+  document.getElementById('designCount').textContent = state.designs.length+' design'+(state.designs.length!==1?'s':'');
+  document.getElementById('dlAllBtn').style.display = state.designs.length?'':'none';
+  if(!state.designs.length){ grid.innerHTML='<div class="empty-state"><div style="font-size:32px;margin-bottom:10px">🎨</div>No designs yet</div>'; return; }
+  grid.innerHTML = state.designs.map((d,i)=>`
+    <div class="design-card">
+      <div style="width:100%;aspect-ratio:5/6;cursor:pointer" onclick="enlargePreview(${i})">
+        ${buildSVG(d,300,360)}
+      </div>
+      <div class="design-label">${applyTransform(d.slogan)}</div>
+      <div class="card-btns">
+        <button class="btn btn-secondary btn-sm" style="flex:1;font-size:10px" onclick="downloadOne(${i})">⬇ PNG</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ─── SVG BUILDER ───
+function buildSVG(d, W, H){
+  const font = document.getElementById('sloganFont').value;
+  const fontSize = Math.round(parseInt(document.getElementById('sloganSize').value)*W/4500);
+  const spacing = parseFloat(document.getElementById('sloganSpacing').value)*W/4500;
+  const effect = document.getElementById('textEffect').value;
+  const curve = parseInt(document.getElementById('curveIntensity').value)/100;
+  const gSize = parseInt(document.getElementById('graphicSize').value)/100;
+  const gPos = parseInt(document.getElementById('graphicPos').value)/100;
+  const subText = document.getElementById('subText').value.trim();
+  const sloganText = applyTransform(d.slogan);
+  const gW = W*gSize;
+  const gH = gW;
+  const gX = state.graphicAlign==='left'?W*0.05:state.graphicAlign==='right'?W*0.95-gW:(W-gW)/2;
+  const gY = H*gPos - gH/2;
+
+  // Background
+  let bgSvg='';
+  if(state.bgMode==='white') bgSvg=`<rect width="${W}" height="${H}" fill="#fff"/>`;
+  else if(state.bgMode==='black') bgSvg=`<rect width="${W}" height="${H}" fill="#000"/>`;
+  else bgSvg=`<defs><pattern id="ck" x="0" y="0" width="16" height="16" patternUnits="userSpaceOnUse"><rect width="8" height="8" fill="#ccc"/><rect x="8" y="8" width="8" height="8" fill="#ccc"/><rect x="8" y="0" width="8" height="8" fill="#eee"/><rect x="0" y="8" width="8" height="8" fill="#eee"/></pattern></defs><rect width="${W}" height="${H}" fill="url(#ck)"/>`;
+
+  // Graphic
+  let graphicSvg='';
+  if(state.graphicDataUrl){
+    graphicSvg=`<image href="${state.graphicDataUrl}" x="${gX}" y="${gY}" width="${gW}" height="${gH}" preserveAspectRatio="xMidYMid meet"/>`;
+  } else {
+    graphicSvg=`<rect x="${gX}" y="${gY}" width="${gW}" height="${gH}" fill="#ddd" stroke="#999" stroke-width="1" stroke-dasharray="4"/><text x="${gX+gW/2}" y="${gY+gH/2+5}" text-anchor="middle" font-size="${W*0.04}" fill="#aaa">Upload graphic</text>`;
+  }
+
+  // Text positioning
+  const sloganY = state.sloganPos==='above' ? gY - fontSize*0.4 : gY+gH+fontSize*1.1;
+  const subY = state.sloganPos==='above' ? gY+gH+fontSize*0.8 : sloganY+fontSize*1.3;
+  const cx = W/2;
+
+  // Build text SVG based on effect
+  let textSvg='';
+  const pathId = `p${d.id}`;
+  if(effect==='straight'){
+    textSvg=`<text x="${cx}" y="${sloganY}" text-anchor="middle" font-family="${font}" font-size="${fontSize}" fill="${state.sloganColor}" letter-spacing="${spacing}">${sloganText}</text>`;
+  } else if(effect==='arch-up'){
+    const r = W*(0.5+curve*0.5);
+    const startX = cx-r; const startY = sloganY;
+    textSvg=`<defs><path id="${pathId}" d="M ${startX} ${sloganY} A ${r} ${r} 0 0 1 ${cx+r} ${sloganY}"/></defs>
+    <text font-family="${font}" font-size="${fontSize}" fill="${state.sloganColor}" letter-spacing="${spacing}">
+      <textPath href="#${pathId}" startOffset="50%" text-anchor="middle">${sloganText}</textPath>
+    </text>`;
+  } else if(effect==='arch-down'){
+    const r = W*(0.5+curve*0.5);
+    textSvg=`<defs><path id="${pathId}" d="M ${cx-r} ${sloganY} A ${r} ${r} 0 0 0 ${cx+r} ${sloganY}"/></defs>
+    <text font-family="${font}" font-size="${fontSize}" fill="${state.sloganColor}" letter-spacing="${spacing}">
+      <textPath href="#${pathId}" startOffset="50%" text-anchor="middle">${sloganText}</textPath>
+    </text>`;
+  } else if(effect==='wave'){
+    const amp = fontSize*curve*0.6;
+    const waveD = `M ${cx-W*0.4} ${sloganY} C ${cx-W*0.2} ${sloganY-amp} ${cx} ${sloganY+amp} ${cx+W*0.4} ${sloganY}`;
+    textSvg=`<defs><path id="${pathId}" d="${waveD}"/></defs>
+    <text font-family="${font}" font-size="${fontSize}" fill="${state.sloganColor}" letter-spacing="${spacing}">
+      <textPath href="#${pathId}" startOffset="50%" text-anchor="middle">${sloganText}</textPath>
+    </text>`;
+  }
+
+  let subSvg='';
+  if(subText){
+    subSvg=`<text x="${cx}" y="${subY}" text-anchor="middle" font-family="${font}" font-size="${fontSize*0.5}" fill="${state.sloganColor}" letter-spacing="${spacing*0.8}" opacity="0.8">${subText}</text>`;
+  }
+
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}">
+    ${bgSvg}${graphicSvg}${textSvg}${subSvg}
+  </svg>`;
+}
+
+function buildHiresSVG(d){
+  // Scale all values to 4500x5400
+  const W=4500,H=5400;
+  const font = document.getElementById('sloganFont').value;
+  const fontSize = parseInt(document.getElementById('sloganSize').value);
+  const spacing = parseFloat(document.getElementById('sloganSpacing').value);
+  const effect = document.getElementById('textEffect').value;
+  const curve = parseInt(document.getElementById('curveIntensity').value)/100;
+  const gSize = parseInt(document.getElementById('graphicSize').value)/100;
+  const gPos = parseInt(document.getElementById('graphicPos').value)/100;
+  const subText = document.getElementById('subText').value.trim();
+  const sloganText = applyTransform(d.slogan);
+  const gW=W*gSize, gH=gW;
+  const gX = state.graphicAlign==='left'?W*0.05:state.graphicAlign==='right'?W*0.95-gW:(W-gW)/2;
+  const gY = H*gPos-gH/2;
+  const sloganY = state.sloganPos==='above'?gY-fontSize*0.4:gY+gH+fontSize*1.1;
+  const subY = state.sloganPos==='above'?gY+gH+fontSize*0.8:sloganY+fontSize*1.3;
+  const cx=W/2;
+  const pathId=`hp${d.id}`;
+
+  let graphicSvg = state.graphicDataUrl
+    ? `<image href="${state.graphicDataUrl}" x="${gX}" y="${gY}" width="${gW}" height="${gH}" preserveAspectRatio="xMidYMid meet"/>`
+    : '';
+
+  let textSvg='';
+  if(effect==='straight'){
+    textSvg=`<text x="${cx}" y="${sloganY}" text-anchor="middle" font-family="${font}" font-size="${fontSize}" fill="${state.sloganColor}" letter-spacing="${spacing}">${sloganText}</text>`;
+  } else if(effect==='arch-up'){
+    const r=W*(0.5+curve*0.5);
+    textSvg=`<defs><path id="${pathId}" d="M ${cx-r} ${sloganY} A ${r} ${r} 0 0 1 ${cx+r} ${sloganY}"/></defs><text font-family="${font}" font-size="${fontSize}" fill="${state.sloganColor}" letter-spacing="${spacing}"><textPath href="#${pathId}" startOffset="50%" text-anchor="middle">${sloganText}</textPath></text>`;
+  } else if(effect==='arch-down'){
+    const r=W*(0.5+curve*0.5);
+    textSvg=`<defs><path id="${pathId}" d="M ${cx-r} ${sloganY} A ${r} ${r} 0 0 0 ${cx+r} ${sloganY}"/></defs><text font-family="${font}" font-size="${fontSize}" fill="${state.sloganColor}" letter-spacing="${spacing}"><textPath href="#${pathId}" startOffset="50%" text-anchor="middle">${sloganText}</textPath></text>`;
+  } else if(effect==='wave'){
+    const amp=fontSize*curve*0.6;
+    textSvg=`<defs><path id="${pathId}" d="M ${cx-W*0.4} ${sloganY} C ${cx-W*0.2} ${sloganY-amp} ${cx} ${sloganY+amp} ${cx+W*0.4} ${sloganY}"/></defs><text font-family="${font}" font-size="${fontSize}" fill="${state.sloganColor}" letter-spacing="${spacing}"><textPath href="#${pathId}" startOffset="50%" text-anchor="middle">${sloganText}</textPath></text>`;
+  }
+  const subSvg = subText?`<text x="${cx}" y="${subY}" text-anchor="middle" font-family="${font}" font-size="${fontSize*0.5}" fill="${state.sloganColor}" letter-spacing="${spacing*0.8}" opacity="0.8">${subText}</text>`:'';
+
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}">${graphicSvg}${textSvg}${subSvg}</svg>`;
+}
+
+async function svgToPngBlob(svgStr, w, h){
+  await document.fonts.ready;
+  return new Promise(res=>{
+    const img=new Image();
+    const blob=new Blob([svgStr],{type:'image/svg+xml'});
+    const url=URL.createObjectURL(blob);
+    img.onload=()=>{
+      const c=document.createElement('canvas'); c.width=w; c.height=h;
+      c.getContext('2d').drawImage(img,0,0,w,h);
+      URL.revokeObjectURL(url);
+      c.toBlob(b=>res(b),'image/png');
+    };
+    img.src=url;
+  });
+}
+
+async function downloadOne(idx){
+  const d=state.designs[idx];
+  const svg=buildHiresSVG(d);
+  const blob=await svgToPngBlob(svg,4500,5400);
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a'); a.href=url; a.download=`${d.slug}.png`; a.click();
+  URL.revokeObjectURL(url);
+}
+
+async function downloadAll(){
+  const btn=document.getElementById('dlAllBtn');
+  btn.textContent='Generating…'; btn.disabled=true;
+  const zip=new JSZip();
+  for(const d of state.designs){
+    const blob=await svgToPngBlob(buildHiresSVG(d),4500,5400);
+    zip.file(`${d.slug}.png`,blob);
+  }
+  const zb=await zip.generateAsync({type:'blob'});
+  const url=URL.createObjectURL(zb);
+  const a=document.createElement('a'); a.href=url; a.download='slogan-designs.zip'; a.click();
+  URL.revokeObjectURL(url);
+  btn.textContent='⬇ Download All (ZIP)'; btn.disabled=false;
+}
+
+function enlargePreview(idx){
+  const d=state.designs[idx];
+  const o=document.createElement('div');
+  o.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:999;display:flex;align-items:center;justify-content:center;cursor:pointer';
+  o.innerHTML=`<div style="max-width:500px;width:90%">${buildSVG(d,450,540)}</div>`;
+  o.onclick=()=>o.remove(); document.body.appendChild(o);
+}
+
+function savePreset(){
+  const slogans=document.getElementById('slogans').value;
+  if(!slogans.trim()){ alert('Enter slogans first'); return; }
+  const saved=JSON.parse(localStorage.getItem('slogan_presets')||'[]');
+  saved.unshift({name:`Preset ${saved.length+1}`,slogans,graphicDataUrl:state.graphicDataUrl,sloganColor:state.sloganColor});
+  localStorage.setItem('slogan_presets',JSON.stringify(saved.slice(0,8)));
+  loadSavedPresets();
+}
+function loadSavedPresets(){
+  const saved=JSON.parse(localStorage.getItem('slogan_presets')||'[]');
+  const el=document.getElementById('savedPresets');
+  if(!saved.length){el.innerHTML='';return;}
+  el.innerHTML='<div style="font-size:10px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#555;margin-bottom:4px">Saved Presets</div>'+saved.map((p,i)=>`<span class="preset-chip" onclick="loadPreset(${i})">${p.name}</span>`).join('');
+}
+function loadPreset(i){
+  const saved=JSON.parse(localStorage.getItem('slogan_presets')||'[]');
+  const p=saved[i];
+  document.getElementById('slogans').value=p.slogans;
+  if(p.graphicDataUrl) state.graphicDataUrl=p.graphicDataUrl;
+  state.sloganColor=p.sloganColor||'#000000';
+}
+loadSavedPresets();
+</script>
+</body>
+</html>
