@@ -708,22 +708,62 @@ const FounderDashboard = ({ state, update, addNotification }) => {
 // ============================================================
 const OperationsDashboard = ({ state, update, addNotification }) => {
   const accent = ACCENT.operations;
-  const [activeTab, setActiveTab] = useState("listings");
+  const [activeTab, setActiveTab] = useState("research");
   const [loading, setLoading] = useState(false);
   const [output, setOutput] = useState("");
 
-  const [uploadNiche, setUploadNiche] = useState("");
-  const [uploadDesign, setUploadDesign] = useState("");
+  // RESEARCH-01 — Quick Trend Capture
+  const [captPlatform, setCaptPlatform] = useState("TikTok");
+  const [captDesc, setCaptDesc] = useState("");
 
-  const [researchNiche, setResearchNiche] = useState("");
-  const [researchKeyword, setResearchKeyword] = useState("");
+  // RESEARCH-02 — Weekly Trend Report
+  const [findings, setFindings] = useState(["", "", "", "", ""]);
+
+  // RESEARCH-03 — Monthly Seasonal Watch
+  const [month, setMonth] = useState(new Date().toLocaleString("default", { month: "long" }));
+
+  // POD-01 — Redbubble Listings
+  const [rbNiche, setRbNiche] = useState("");
+  const [rbDesigns, setRbDesigns] = useState("");
+  const [rbBuyer, setRbBuyer] = useState("");
+  const [rbOcc, setRbOcc] = useState("");
+
+  // POD-02 — Redbubble Rewrite
+  const [rwTitle, setRwTitle] = useState("");
+  const [rwTags, setRwTags] = useState("");
+  const [rwDesc, setRwDesc] = useState("");
+  const [rwDesign, setRwDesign] = useState("");
+  const [rwNiche, setRwNiche] = useState("");
+
+  // POD-03 — Customer Query
+  const [custMsg, setCustMsg] = useState("");
+  const [custWant, setCustWant] = useState("");
+
+  // Merch Upload / Compliance
+  const [compListing, setCompListing] = useState("");
+
+  // Clients
+  const [showAddClient, setShowAddClient] = useState(false);
+  const [newClient, setNewClient] = useState({ name: "", service: "", niche: "", invoice: "" });
+  const [selectedClient, setSelectedClient] = useState(null);
+  const [emailType, setEmailType] = useState("acknowledge");
 
   const run = async (prompt) => { setLoading(true); setOutput(""); await callClaude(prompt, setOutput); setLoading(false); };
 
+  const EMAIL_PROMPTS = {
+    acknowledge: (c) => `Write a warm, professional email acknowledging a new List Peak enquiry from ${c.name} who wants "${c.service}" for the "${c.niche}" niche. Confirm receipt, explain next step is their brief review, report takes 5–7 working days. Sign off as the List Peak team. Under 120 words.`,
+    deliver:     (c) => `Write a professional report delivery email to ${c.name} for their ${c.service} (niche: ${c.niche}). Mention report is attached, highlight to check the top opportunities section first, invite questions. Sign off as List Peak team. Under 150 words.`,
+    followup:    (c) => `Write a friendly follow-up email to ${c.name} checking in after we delivered their ${c.service} report. Ask if they have questions, offer a quick call. Sign off as List Peak team. Under 80 words.`,
+    testimonial: (c) => `Write a short email asking ${c.name} for a written testimonial after a successful ${c.service} delivery. Make it easy — one paragraph is fine. Sign off as List Peak team. Under 70 words.`,
+    invoice:     (c) => `Write a professional invoice email to ${c.name} for ${c.service} at $${c.invoice}. Include payment via Wise. Sign off as List Peak team. Under 80 words.`,
+    chase:       (c) => `Write a polite but firm payment chase email to ${c.name}. Invoice: $${c.invoice} for ${c.service}. Professional, not aggressive. Sign off as List Peak team. Under 70 words.`,
+  };
+
   const tabs = [
-    { id: "listings", label: "Listing Uploads" },
-    { id: "research", label: "Niche Research" },
-    { id: "rejections", label: "Rejections" },
+    { id: "research", label: "Research" },
+    { id: "redbubble", label: "Redbubble" },
+    { id: "merch", label: "Merch Upload" },
+    { id: "clients", label: "Clients" },
     { id: "checklist", label: "Checklist" },
   ];
 
@@ -731,12 +771,184 @@ const OperationsDashboard = ({ state, update, addNotification }) => {
     <div>
       <TabBar tabs={tabs} active={activeTab} onChange={(id) => { setActiveTab(id); setOutput(""); }} accent={accent} />
 
-      {activeTab === "listings" && (
+      {/* ── RESEARCH TAB ── */}
+      {activeTab === "research" && (
         <div>
-          <SectionTitle accent={accent}>Pending Listing Uploads</SectionTitle>
+
+          {/* RESEARCH-01 */}
+          <SectionTitle accent={accent}>Quick Trend Capture — RESEARCH-01</SectionTitle>
+          <Alert accent={accent}>
+            Spotted something while browsing? Capture it here instantly. Claude gives a rapid verdict and you can flag it straight to Sheldon.
+          </Alert>
+          <Select label="Platform" value={captPlatform} onChange={setCaptPlatform}
+            options={["TikTok", "Instagram", "Pinterest", "Facebook", "YouTube", "Twitter / X", "Other"]} />
+          <div style={{ marginTop: 10 }}>
+            <Field label="What you saw — describe the design or paste a URL / note" value={captDesc} onChange={setCaptDesc}
+              multiline placeholder="e.g. Funny fishing dad shirt getting thousands of likes on TikTok — text says 'Fish Fear Me, People Tolerate Me'" />
+          </div>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <Btn accent={accent} disabled={loading || !captDesc} onClick={() => run(`You are a print-on-demand trend analyst. A social media trend has been spotted.\n\nPlatform: ${captPlatform}\nDescription: ${captDesc}\n\nAssess quickly:\n1. Is this a real POD opportunity?\n2. Would it translate to T-shirts, mugs, and other print products?\n3. Is the audience likely to buy merch?\n4. How long before this saturates Amazon (days / weeks / months)?\n5. VERDICT: ESCALATE NOW / ADD TO SUNDAY REPORT / SKIP\n\nKeep response under 150 words — this is a rapid check, not a full analysis.`)}>
+              {loading ? "Checking…" : "Quick Viability Check (RESEARCH-01)"}
+            </Btn>
+            <Btn accent={accent} secondary small disabled={!captDesc} onClick={() => {
+              update("urgentTrends", [{ id: Date.now(), platform: captPlatform, desc: captDesc, date: new Date().toDateString() }, ...state.urgentTrends]);
+              addNotification("founder", `⚡ Urgent trend flagged by Sati — ${captPlatform}: ${captDesc.slice(0, 60)}…`);
+              setCaptDesc("");
+              alert("Flagged to Sheldon ✓");
+            }}>
+              Flag Urgent to Sheldon →
+            </Btn>
+          </div>
+          {loading && <Spinner accent={accent} />}
+          <OutputBox content={output} accent={accent} />
+
+          {/* Urgent trends inbox */}
+          {state.urgentTrends.length > 0 && (
+            <div style={{ marginTop: 16 }}>
+              <SectionTitle accent={accent}>Flagged Urgent Trends</SectionTitle>
+              {state.urgentTrends.slice(0, 3).map((t) => (
+                <Card key={t.id} accent={accent} style={{ padding: 12 }}>
+                  <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 4 }}>
+                    <Badge label={t.platform} color={accent.main} />
+                    <span style={{ fontSize: 11, color: "#9ca3af" }}>{t.date}</span>
+                  </div>
+                  <div style={{ fontSize: 13, color: "#374151" }}>{t.desc}</div>
+                </Card>
+              ))}
+            </div>
+          )}
+
+          <div style={{ marginTop: 24 }}>
+            {/* RESEARCH-02 */}
+            <SectionTitle accent={accent}>Weekly Trend Report — RESEARCH-02</SectionTitle>
+            <Alert accent={accent}>
+              Fill in what you spotted this week — paste URLs, type quick notes, describe what you saw. Submit every Sunday evening.
+            </Alert>
+            {findings.map((f, i) => (
+              <Field key={i}
+                label={`Finding ${i + 1} — Platform, what you saw, why it caught your attention`}
+                value={f}
+                onChange={v => { const n = [...findings]; n[i] = v; setFindings(n); }}
+                multiline
+                placeholder="e.g. TikTok — fishing dad shirt getting 50k likes, text 'Reel Life' with fish graphic. People tagging their dads."
+              />
+            ))}
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <Btn accent={accent} disabled={loading || !findings.filter(Boolean).length}
+                onClick={() => run(`You are a print-on-demand trend researcher. Turn these social media observations into a structured weekly trend report.\n\nFindings this week:\n${findings.filter(Boolean).map((f, i) => `${i + 1}. ${f}`).join("\n")}\n\nFor each finding:\n- Clean up the description\n- Explain the POD potential in one sentence\n- Suggest 2 product types that would work\n- Flag any timing concerns (seasonal? already saturated?)\n\nFormat as a clean numbered list ready to hand off to Sheldon.`)}>
+                {loading ? "Generating…" : "Generate Trend Report (RESEARCH-02)"}
+              </Btn>
+            </div>
+            {loading && <Spinner accent={accent} />}
+            <OutputBox content={output} accent={accent} />
+            {output && (
+              <Btn accent={accent} small secondary style={{ marginTop: 10 }} onClick={() => {
+                const report = { id: Date.now(), content: output, findings: findings.filter(Boolean), date: new Date().toDateString() };
+                update("trendReports", [report, ...state.trendReports]);
+                addNotification("founder", `📊 Sati's weekly trend report is ready — check Research inbox.`);
+                setOutput(""); setFindings(["", "", "", "", ""]);
+                alert("Report submitted to Sheldon ✓");
+              }}>Submit Report to Sheldon →</Btn>
+            )}
+          </div>
+
+          <div style={{ marginTop: 24 }}>
+            {/* RESEARCH-03 */}
+            <SectionTitle accent={accent}>Monthly Seasonal Watch — RESEARCH-03</SectionTitle>
+            <Alert accent={accent}>Run at the start of each month only. Gets the upcoming seasonal POD calendar for Sheldon to plan briefs.</Alert>
+            <Select label="Current month" value={month} onChange={setMonth}
+              options={["January","February","March","April","May","June","July","August","September","October","November","December"]} />
+            <div style={{ marginTop: 10 }}>
+              <Btn accent={accent} disabled={loading} onClick={() => run(`You are a seasonal POD trend strategist. The current month is ${month}.\n\nProvide a seasonal planning guide for print-on-demand sellers on Amazon Merch and Redbubble.\n\n1. TOP OCCASIONS THIS MONTH — list every gifting occasion and holiday in the next 6 weeks with exact dates\n2. DESIGN THEMES TO BRIEF NOW — what should designers be creating this week to be live in time?\n3. NICHES PEAKING THIS MONTH — which buyer groups are most active right now?\n4. NEXT MONTH PREVIEW — what to start preparing for\n5. ONE QUICK WIN — single niche + design angle you could launch within 7 days\n\nBe specific with dates and design directions.`)}>
+                {loading ? "Generating…" : "Get Monthly Seasonal Guide (RESEARCH-03)"}
+              </Btn>
+            </div>
+            {loading && <Spinner accent={accent} />}
+            <OutputBox content={output} accent={accent} />
+            {output && (
+              <Btn accent={accent} small secondary style={{ marginTop: 10 }} onClick={() => {
+                addNotification("founder", `📅 Monthly seasonal guide for ${month} is ready — check Sati's Research tab.`);
+                alert("Sheldon notified ✓");
+              }}>Notify Sheldon →</Btn>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── REDBUBBLE TAB ── */}
+      {activeTab === "redbubble" && (
+        <div>
+
+          {/* POD-01 */}
+          <SectionTitle accent={accent}>Redbubble Listing Generator — POD-01</SectionTitle>
+          <Alert accent={accent}>Use when Hayden hands off completed designs. Generates full titles, tags, and descriptions for Redbubble.</Alert>
+          <Field label="Niche" value={rbNiche} onChange={setRbNiche} placeholder="e.g. Fishing enthusiasts" />
+          <Field label="Designs — describe each one" value={rbDesigns} onChange={setRbDesigns} multiline
+            placeholder={"1. 'Reel Life — Born to Fish' text-based humour\n2. 'Fish Fear Me' with fishing rod graphic\n3. 'Gone Fishing' vintage badge style"} />
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            <Field label="Target buyer" value={rbBuyer} onChange={setRbBuyer} placeholder="e.g. Fishing hobbyists, gift for dad" />
+            <Field label="Occasions" value={rbOcc} onChange={setRbOcc} placeholder="e.g. Birthday, Father's Day" />
+          </div>
+          <Btn accent={accent} disabled={loading || !rbNiche || !rbDesigns}
+            onClick={() => run(`Write complete Redbubble listings for these print-on-demand designs.\n\nNiche: ${rbNiche}\nTarget buyer: ${rbBuyer}\nOccasions: ${rbOcc}\n\nDesigns:\n${rbDesigns}\n\nFor EACH design write:\n1. TITLE — natural, descriptive, under 80 characters, not keyword-stuffed\n2. TAGS — exactly 15 tags, comma separated, mix of broad and specific\n3. DESCRIPTION — 180–220 words, warm and conversational\n\nFor each description:\n- Open with a line that speaks directly to the buyer\n- Describe what makes this design enjoyable or meaningful\n- Mention who it's perfect for\n- Include 1–2 occasion references naturally\n- End with a warm invitation to browse\n\nDo NOT make these sound like they were written by a robot. Write like a person, not a catalogue.`)}>
+            {loading ? "Generating…" : "Generate Redbubble Listings (POD-01)"}
+          </Btn>
+          {loading && <Spinner accent={accent} />}
+          <OutputBox content={output} accent={accent} />
+          {output && (
+            <Btn accent={accent} small secondary style={{ marginTop: 10 }} onClick={() => {
+              addNotification("designer", "Redbubble listing copy ready — check your Brief tab.");
+              setOutput("");
+              alert("Hayden notified ✓");
+            }}>Mark Done — Notify Hayden →</Btn>
+          )}
+
+          <div style={{ marginTop: 24 }}>
+            {/* POD-02 */}
+            <SectionTitle accent={accent}>Redbubble Listing Rewrite — POD-02</SectionTitle>
+            <Alert accent={accent}>Use after 3 weeks with zero views. Diagnoses why the listing isn't performing and rewrites it.</Alert>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <Field label="Current title" value={rwTitle} onChange={setRwTitle} placeholder="Paste current title" />
+              <Field label="Niche" value={rwNiche} onChange={setRwNiche} placeholder="e.g. Fishing Dad" />
+            </div>
+            <Field label="Current tags" value={rwTags} onChange={setRwTags} placeholder="Paste current tags" />
+            <Field label="Current description" value={rwDesc} onChange={setRwDesc} multiline placeholder="Paste current description" />
+            <Field label="Design description" value={rwDesign} onChange={setRwDesign} placeholder="e.g. Text saying 'Reel Life' with small fish graphic, dark background" />
+            <Btn accent={accent} disabled={loading || !rwTitle}
+              onClick={() => run(`This Redbubble listing has been live for 3+ weeks and is getting zero views. Help me rewrite it to improve discoverability.\n\nCurrent title: ${rwTitle}\nCurrent tags: ${rwTags}\nCurrent description: ${rwDesc}\nDesign description: ${rwDesign}\nNiche: ${rwNiche}\n\nDiagnose:\n- Is the title too generic or too specific?\n- Are the tags missing obvious search terms?\n- Is the description engaging enough to convert?\n\nRewrite:\n1. New TITLE — different angle from the original\n2. New TAGS — 15 tags, prioritise what buyers actually search\n3. New DESCRIPTION — fresher, more personal tone\n\nEnd with one sentence explaining why the original likely underperformed.`)}>
+              {loading ? "Rewriting…" : "Rewrite Listing (POD-02)"}
+            </Btn>
+            {loading && <Spinner accent={accent} />}
+            <OutputBox content={output} accent={accent} />
+          </div>
+
+          <div style={{ marginTop: 24 }}>
+            {/* POD-03 */}
+            <SectionTitle accent={accent}>Customer Query Reply — POD-03</SectionTitle>
+            <Alert accent={accent}>Use when a buyer messages on Redbubble. Keeps replies warm, human, and on-brand.</Alert>
+            <Field label="Their message" value={custMsg} onChange={setCustMsg} multiline placeholder="Paste the customer's message here…" />
+            <Field label="What they seem to want" value={custWant} onChange={setCustWant}
+              placeholder="e.g. asking about sizing / complaint about shipping / asking if design comes on a mug" />
+            <Btn accent={accent} disabled={loading || !custMsg}
+              onClick={() => run(`Write a friendly, helpful reply to this customer message on Redbubble.\n\nTheir message: ${custMsg}\nWhat they seem to want: ${custWant}\n\nContext:\n- We are the designer, not the printer or shipper\n- Redbubble handles all fulfilment and customer service for orders\n- We genuinely care about our buyers\n\nIf it is a shipping or order issue: sympathise briefly, direct to Redbubble support at redbubble.com/help, wish them a resolution.\nIf it is a design question: answer warmly and helpfully.\n\nKeep the reply under 5 sentences. Warm, human, not corporate.`)}>
+              {loading ? "Writing…" : "Write Customer Reply (POD-03)"}
+            </Btn>
+            {loading && <Spinner accent={accent} />}
+            <OutputBox content={output} accent={accent} />
+          </div>
+        </div>
+      )}
+
+      {/* ── MERCH UPLOAD TAB ── */}
+      {activeTab === "merch" && (
+        <div>
+          <SectionTitle accent={accent}>Amazon Merch — Pending Uploads</SectionTitle>
+          <Alert accent={accent}>
+            Sheldon generates listing copy in his dashboard. It appears here for your compliance check before you upload to Merch on Demand.
+          </Alert>
           {state.listingCopies.filter(l => l.status === "pending_upload").length === 0
-            ? <Alert accent={accent}>No listing copy waiting. Sheldon generates copy in his Merch Listing tab.</Alert>
-            : state.listingCopies.filter(l => l.status === "pending_upload").map((l, i) => (
+            ? <Alert accent={accent}>No listing copy waiting. Sheldon generates copy in his Merch Listing tab — check back after he sends it.</Alert>
+            : state.listingCopies.filter(l => l.status === "pending_upload").map((l) => (
               <Card key={l.id} accent={accent}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
                   <div>
@@ -763,48 +975,23 @@ const OperationsDashboard = ({ state, update, addNotification }) => {
               </Card>
             ))}
 
-          <SectionTitle accent={accent} style={{ marginTop: 20 }}>Compliance Check</SectionTitle>
-          <Alert accent={accent}>Paste a listing draft here to check it against Amazon Merch content policy before uploading.</Alert>
-          <Field label="Listing to check" value={uploadNiche} onChange={setUploadNiche} multiline placeholder="Paste the full title, bullets, and description here…" />
-          <Btn accent={accent} disabled={loading || !uploadNiche} onClick={() => run(`Review this Amazon Merch on Demand listing for content policy compliance. Flag any violations and provide a clean compliant version.\n\nListing:\n${uploadNiche}\n\nCheck for: restricted phrases, competitor names, health claims, political content, trademark risks, price mentions, URLs, ALL CAPS violations, keyword stuffing. Give a PASS/FAIL verdict for each element and a final SAFE TO UPLOAD or NEEDS FIXING verdict.`)}>
+          <SectionTitle accent={accent} style={{ marginTop: 24 }}>Compliance Check</SectionTitle>
+          <Alert accent={accent}>Always paste and check before uploading. Flags policy violations before they become rejections.</Alert>
+          <Field label="Listing to check (paste title + bullets + description)" value={compListing} onChange={setCompListing} multiline
+            placeholder="Paste the full listing copy here — title, bullet points, and description…" />
+          <Btn accent={accent} disabled={loading || !compListing}
+            onClick={() => run(`Review this Amazon Merch on Demand listing for content policy compliance.\n\nListing:\n${compListing}\n\nCheck for: restricted phrases, competitor names, health claims, political content, trademark risks, price mentions, URLs, ALL CAPS violations, keyword stuffing, sensational language.\n\nFor each element give: PASS or FAIL with a one-line reason.\nFinal verdict: SAFE TO UPLOAD or NEEDS FIXING.\nIf NEEDS FIXING: provide the corrected version ready to paste.`)}>
             {loading ? "Checking…" : "Compliance Check →"}
           </Btn>
           {loading && <Spinner accent={accent} />}
           <OutputBox content={output} accent={accent} />
-        </div>
-      )}
 
-      {activeTab === "research" && (
-        <div>
-          <SectionTitle accent={accent}>Monthly Niche Research</SectionTitle>
-          <Alert accent={accent}>Run at the start of each month. Feeds trend intelligence back to Sheldon.</Alert>
-          <Field label="Niche to research" value={researchNiche} onChange={setResearchNiche} placeholder="e.g. Crochet lovers" />
-          <Field label="Keyword focus (optional)" value={researchKeyword} onChange={setResearchKeyword} placeholder="e.g. Gifts for crochet lovers" />
-          <Btn accent={accent} disabled={loading || !researchNiche} onClick={() => run(`You are a print-on-demand market researcher. Analyse this niche for Amazon Merch on Demand and Redbubble.\n\nNiche: ${researchNiche}\nKeyword focus: ${researchKeyword || "general"}\n\nProvide:\n1. BUYER PROFILE — demographics, motivations, buying triggers\n2. TOP 5 DESIGN THEMES that sell in this niche\n3. SEASONAL OPPORTUNITIES — when demand peaks\n4. COMPETITOR GAPS — what's missing that buyers would love\n5. TOP KEYWORDS — 10 keywords/phrases for listing optimisation\n6. QUICK WINS — 3 design ideas that could sell within 30 days\n\nBe specific and actionable.`)}>
-            {loading ? "Researching…" : "Research Niche →"}
-          </Btn>
-          {loading && <Spinner accent={accent} />}
-          <OutputBox content={output} accent={accent} />
-          {output && (
-            <Btn accent={accent} small secondary style={{ marginTop: 10 }} onClick={() => {
-              const report = { id: Date.now(), niche: researchNiche, content: output, date: new Date().toDateString() };
-              update("trendReports", [report, ...state.trendReports]);
-              addNotification("founder", `Monthly research ready: ${researchNiche}`);
-              setOutput(""); setResearchNiche(""); setResearchKeyword("");
-              alert("Report saved and Sheldon notified ✓");
-            }}>Save & Notify Sheldon →</Btn>
-          )}
-        </div>
-      )}
-
-      {activeTab === "rejections" && (
-        <div>
-          <SectionTitle accent={accent}>Rejection Reports</SectionTitle>
+          <SectionTitle accent={accent} style={{ marginTop: 24 }}>Rejection Reports</SectionTitle>
           {state.rejectionReports.length === 0
-            ? <Alert accent={accent}>No rejection reports yet.</Alert>
-            : state.rejectionReports.map((r, i) => (
+            ? <Alert accent={accent}>No rejection reports from Hayden yet.</Alert>
+            : state.rejectionReports.map((r) => (
               <Card key={r.id} accent={accent}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
                   <div style={{ fontWeight: 700, fontSize: 14, color: "#111" }}>{r.design}</div>
                   <Badge label={r.status.toUpperCase()} color={r.status === "new" ? "#b5451b" : "#6b7280"} />
                 </div>
@@ -814,15 +1001,92 @@ const OperationsDashboard = ({ state, update, addNotification }) => {
         </div>
       )}
 
+      {/* ── CLIENTS TAB ── */}
+      {activeTab === "clients" && (
+        <div>
+          <SectionTitle accent={accent}>List Peak — Client Pipeline</SectionTitle>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+            <span style={{ fontSize: 13, color: "#6b7280" }}>{state.clients.length} client{state.clients.length !== 1 ? "s" : ""}</span>
+            <Btn accent={accent} small onClick={() => setShowAddClient(!showAddClient)}>+ Add Client</Btn>
+          </div>
+
+          {showAddClient && (
+            <Card accent={accent}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: accent.main, letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 12 }}>New Client</div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                <Field label="Client name" value={newClient.name} onChange={v => setNewClient(p => ({ ...p, name: v }))} placeholder="First name" small />
+                <Field label="Service" value={newClient.service} onChange={v => setNewClient(p => ({ ...p, service: v }))} placeholder="e.g. Niche Research Report" small />
+                <Field label="Niche" value={newClient.niche} onChange={v => setNewClient(p => ({ ...p, niche: v }))} placeholder="e.g. Kitchen gadgets" small />
+                <Field label="Invoice (USD)" value={newClient.invoice} onChange={v => setNewClient(p => ({ ...p, invoice: v }))} placeholder="e.g. 97" small />
+              </div>
+              <div style={{ marginTop: 10 }}>
+                <Btn accent={accent} small onClick={() => {
+                  update("clients", [{ ...newClient, id: Date.now(), status: "New", paid: false, date: new Date().toDateString() }, ...state.clients]);
+                  setNewClient({ name: "", service: "", niche: "", invoice: "" });
+                  setShowAddClient(false);
+                }}>Save Client</Btn>
+              </div>
+            </Card>
+          )}
+
+          {state.clients.length === 0
+            ? <Alert accent={accent}>No clients yet. Add your first List Peak client above.</Alert>
+            : state.clients.map((c, i) => (
+              <Card key={c.id} accent={accent}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                  <div>
+                    <div style={{ fontSize: 15, fontWeight: 700, color: "#111", marginBottom: 3 }}>{c.name}</div>
+                    <div style={{ fontSize: 13, color: "#6b7280", marginBottom: 8 }}>{c.service} · {c.niche}</div>
+                    <div style={{ display: "flex", gap: 7 }}>
+                      <Badge label={c.status} color={c.status === "Paid" ? "#2d6a4f" : c.status === "New" ? "#b5451b" : "#6b7280"} />
+                      <Badge label={c.paid ? "PAID" : `$${c.invoice} DUE`} color={c.paid ? "#2d6a4f" : "#b5451b"} />
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", gap: 7, flexDirection: "column", alignItems: "flex-end" }}>
+                    <select value={c.status} onChange={e => { const updated = [...state.clients]; updated[i] = { ...c, status: e.target.value }; update("clients", updated); }}
+                      style={{ background: "#fff", border: "1.5px solid #d9d4cc", borderRadius: 8, padding: "5px 9px", color: "#374151", fontSize: 12 }}>
+                      {["New", "In Progress", "Report Sent", "Paid"].map(s => <option key={s}>{s}</option>)}
+                    </select>
+                    <button onClick={() => setSelectedClient(selectedClient?.id === c.id ? null : c)}
+                      style={{ background: accent.light, border: `1.5px solid ${accent.border}`, color: accent.text, borderRadius: 8, padding: "5px 12px", fontSize: 12, cursor: "pointer", fontWeight: 600 }}>
+                      Email {selectedClient?.id === c.id ? "▲" : "▼"}
+                    </button>
+                  </div>
+                </div>
+                {selectedClient?.id === c.id && (
+                  <div style={{ marginTop: 14, paddingTop: 14, borderTop: `1.5px solid ${accent.mid}` }}>
+                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 12 }}>
+                      {[["acknowledge","Acknowledge"],["deliver","Send Report"],["followup","Follow Up"],["testimonial","Testimonial"],["invoice","Invoice"],["chase","Chase Payment"]].map(([type, label]) => (
+                        <button key={type} onClick={() => setEmailType(type)}
+                          style={{ background: emailType === type ? accent.main : accent.light, color: emailType === type ? "#fff" : accent.text, border: `1.5px solid ${emailType === type ? accent.main : accent.border}`, borderRadius: 8, padding: "5px 12px", fontSize: 12, cursor: "pointer", fontWeight: 600 }}>
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                    <Btn accent={accent} small disabled={loading} onClick={() => run(EMAIL_PROMPTS[emailType](c))}>
+                      {loading ? "Writing…" : "Generate Email →"}
+                    </Btn>
+                    {loading && <Spinner accent={accent} />}
+                    <OutputBox content={output} accent={accent} />
+                  </div>
+                )}
+              </Card>
+            ))}
+        </div>
+      )}
+
+      {/* ── CHECKLIST TAB ── */}
       {activeTab === "checklist" && (
         <div>
           <SectionTitle accent={accent}>Weekly Checklist — Sati</SectionTitle>
           <Checklist accent={accent} items={[
             "Browse Facebook, Instagram, TikTok, Pinterest — minimum 3 sessions",
-            "Run Monthly Niche Research (first week of month only)",
-            "Check for new listing copy from Sheldon — compliance check then upload",
-            "Write Redbubble listings for Hayden's completed design handoffs",
-            "Check Redbubble customer messages — reply within 24 hours",
+            "Capture any trends spotted using Quick Trend Capture (RESEARCH-01)",
+            "Submit Sunday trend report to Sheldon via Research tab (RESEARCH-02)",
+            "Run Monthly Seasonal Watch on the first week of each month (RESEARCH-03)",
+            "Write Redbubble listings for Hayden's completed design handoffs (POD-01)",
+            "Check Redbubble customer messages — reply within 24 hours (POD-03)",
+            "Check for new Merch listing copy from Sheldon — compliance check then upload",
             "Acknowledge new List Peak enquiries within 24 hours",
             "Send completed List Peak reports + invoices when Sheldon confirms ready",
             "Update payment status for any Wise receipts received",
