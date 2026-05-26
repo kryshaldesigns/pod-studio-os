@@ -1,15 +1,18 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
+import { createClient } from "@supabase/supabase-js";
+
+// ============================================================
+// SUPABASE CLIENT
+// ============================================================
+const supabase = createClient(
+  process.env.REACT_APP_SUPABASE_URL,
+  process.env.REACT_APP_SUPABASE_ANON_KEY
+);
 
 // ============================================================
 // CONSTANTS & CONFIG
 // ============================================================
 const ROLES = { FOUNDER: "founder", OPERATIONS: "operations", DESIGNER: "designer" };
-
-const USERS = [
-  { id: 1, name: "Sheldon", role: ROLES.FOUNDER, email: "sheldon@listpeak.com", pin: "1234" },
-  { id: 2, name: "Sati", role: ROLES.OPERATIONS, email: "sati@listpeak.com", pin: "5678" },
-  { id: 3, name: "Hayden", role: ROLES.DESIGNER, email: "hayden@listpeak.com", pin: "9012" },
-];
 
 // Light theme accent colours — role-specific tints on top of the warm neutral base
 const ACCENT = {
@@ -56,9 +59,9 @@ const getGreeting = () => {
 };
 
 // ============================================================
-// SIMULATED SHARED STATE (replaces Supabase in this demo)
+// SUPABASE DATA HOOK
 // ============================================================
-const useSharedState = () => {
+const useSharedState = (userRole) => {
   const [state, setState] = useState({
     detergentFund: { amount: 0, goal: 5000 },
     nicheBriefs: [],
@@ -69,27 +72,84 @@ const useSharedState = () => {
     uploadLog: [],
     rejectionReports: [],
     clients: [],
-    performanceLog: [],
-    notifications: { founder: [], operations: [], designer: [] },
+    notifications: [],
+    loaded: false,
   });
 
-  const update = (key, val) => setState(prev => ({ ...prev, [key]: val }));
-  const addNotification = (role, msg) => setState(prev => ({
-    ...prev,
-    notifications: {
-      ...prev.notifications,
-      [role]: [{ id: Date.now(), msg, read: false, time: new Date().toLocaleTimeString() }, ...prev.notifications[role]]
+  // Load all data for this user's role
+  const loadAll = useCallback(async () => {
+    try {
+      const [
+        { data: fund },
+        { data: briefs },
+        { data: trends },
+        { data: urgent },
+        { data: handoffs },
+        { data: copies },
+        { data: uploads },
+        { data: rejections },
+        { data: clients },
+        { data: notifs },
+      ] = await Promise.all([
+        supabase.from("detergent_fund").select("*").single(),
+        supabase.from("niche_briefs").select("*").order("created_at", { ascending: false }).limit(10),
+        supabase.from("trend_reports").select("*").order("created_at", { ascending: false }).limit(20),
+        supabase.from("urgent_trends").select("*").order("created_at", { ascending: false }).limit(20),
+        supabase.from("design_handoffs").select("*").order("created_at", { ascending: false }).limit(20),
+        supabase.from("listing_copies").select("*").order("created_at", { ascending: false }).limit(20),
+        supabase.from("upload_log").select("*").order("created_at", { ascending: false }).limit(50),
+        supabase.from("rejection_reports").select("*").order("created_at", { ascending: false }).limit(20),
+        supabase.from("clients").select("*").order("created_at", { ascending: false }),
+        supabase.from("notifications").select("*").eq("for_role", userRole).eq("read", false).order("created_at", { ascending: false }).limit(20),
+      ]);
+      setState({
+        detergentFund: fund ? { amount: fund.amount, goal: fund.goal } : { amount: 0, goal: 5000 },
+        nicheBriefs: briefs || [],
+        trendReports: trends || [],
+        urgentTrends: urgent || [],
+        designHandoffs: handoffs || [],
+        listingCopies: copies || [],
+        uploadLog: uploads || [],
+        rejectionReports: rejections || [],
+        clients: clients || [],
+        notifications: notifs || [],
+        loaded: true,
+      });
+    } catch (e) {
+      console.error("loadAll error", e);
+      setState(prev => ({ ...prev, loaded: true }));
     }
-  }));
-  const clearNotification = (role, id) => setState(prev => ({
-    ...prev,
-    notifications: {
-      ...prev.notifications,
-      [role]: prev.notifications[role].filter(n => n.id !== id)
-    }
-  }));
+  }, [userRole]);
 
-  return { state, update, addNotification, clearNotification };
+  useEffect(() => { if (userRole) loadAll(); }, [userRole, loadAll]);
+
+  // Generic update: re-fetches after mutation
+  const update = useCallback(async (table, operation, data) => {
+    try {
+      if (operation === "insert") {
+        await supabase.from(table).insert(data);
+      } else if (operation === "update") {
+        await supabase.from(table).update(data.values).eq("id", data.id);
+      } else if (operation === "upsert") {
+        await supabase.from(table).upsert(data);
+      }
+      await loadAll();
+    } catch (e) {
+      console.error("update error", e);
+    }
+  }, [loadAll]);
+
+  const addNotification = useCallback(async (forRole, message) => {
+    await supabase.from("notifications").insert({ for_role: forRole, message, read: false });
+    await loadAll();
+  }, [loadAll]);
+
+  const clearNotification = useCallback(async (id) => {
+    await supabase.from("notifications").update({ read: true }).eq("id", id);
+    setState(prev => ({ ...prev, notifications: prev.notifications.filter(n => n.id !== id) }));
+  }, []);
+
+  return { state, update, addNotification, clearNotification, reload: loadAll };
 };
 
 // ============================================================
@@ -1450,18 +1510,37 @@ const DesignerDashboard = ({ state, update, addNotification }) => {
 };
 
 // ============================================================
-// LOGIN SCREEN
+// LOGIN SCREEN — Supabase Auth
 // ============================================================
 const LoginScreen = ({ onLogin }) => {
-  const [selected, setSelected] = useState(null);
-  const [pin, setPin] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleLogin = () => {
-    if (!selected) return;
-    if (selected.pin === pin) { onLogin(selected); }
-    else { setError("Incorrect PIN. Try again."); setPin(""); }
+  const handleLogin = async () => {
+    if (!email || !password) { setError("Please enter your email and password."); return; }
+    setLoading(true); setError("");
+    try {
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({ email, password });
+      if (authError) { setError("Incorrect email or password. Try again."); setLoading(false); return; }
+      const { data: profile, error: profError } = await supabase.from("profiles").select("*").eq("id", authData.user.id).single();
+      if (profError || !profile) { setError("Account found but no profile set up. Contact Sheldon."); setLoading(false); return; }
+      onLogin({ ...profile, email: authData.user.email });
+    } catch (e) {
+      setError("Something went wrong. Check your connection.");
+    }
+    setLoading(false);
   };
+
+  // Detect role from email for accent colour preview
+  const getPreviewAccent = () => {
+    if (email.includes("shsram") || email.includes("sheldon")) return ACCENT.founder;
+    if (email.includes("satik") || email.includes("sati")) return ACCENT.operations;
+    if (email.includes("hayden")) return ACCENT.designer;
+    return { main: "#374151", light: "#f3f4f6", border: "#d1d5db", text: "#374151" };
+  };
+  const acc = getPreviewAccent();
 
   return (
     <div style={{ minHeight: "100vh", background: "#f4f0eb", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
@@ -1473,100 +1552,126 @@ const LoginScreen = ({ onLogin }) => {
         input:focus { outline: none; }
       `}</style>
 
-      <div style={{ width: "100%", maxWidth: 420, animation: "fadeUp 0.3s ease" }}>
-        {/* Logo area */}
-        <div style={{ textAlign: "center", marginBottom: 40 }}>
-          <div style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 52, height: 52, background: "#fff", border: "1.5px solid #e5e0d8", borderRadius: 14, marginBottom: 16, boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
+      <div style={{ width: "100%", maxWidth: 400, animation: "fadeUp 0.3s ease" }}>
+        {/* Logo */}
+        <div style={{ textAlign: "center", marginBottom: 36 }}>
+          <div style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 52, height: 52, background: "#fff", border: "1.5px solid #e5e0d8", borderRadius: 14, marginBottom: 14, boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
             <span style={{ fontSize: 24 }}>🖨️</span>
           </div>
-          <div style={{ fontSize: 26, fontWeight: 700, color: "#111", letterSpacing: "-0.5px", fontFamily: "'DM Sans', sans-serif" }}>POD Studio OS</div>
-          <div style={{ fontSize: 14, color: "#9ca3af", marginTop: 6 }}>Select your profile to continue</div>
+          <div style={{ fontSize: 26, fontWeight: 700, color: "#111", letterSpacing: "-0.5px" }}>POD Studio OS</div>
+          <div style={{ fontSize: 14, color: "#9ca3af", marginTop: 6 }}>Sign in to your dashboard</div>
         </div>
 
-        {/* Role cards */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 20 }}>
-          {USERS.map(u => {
-            const acc = ACCENT[u.role];
-            const active = selected?.id === u.id;
-            return (
-              <button
-                key={u.id}
-                onClick={() => { setSelected(u); setError(""); setPin(""); }}
-                style={{
-                  background: active ? acc.light : "#fff",
-                  border: `1.5px solid ${active ? acc.main : "#e5e0d8"}`,
-                  borderRadius: 12,
-                  padding: "14px 18px",
-                  cursor: "pointer",
-                  textAlign: "left",
-                  transition: "all 0.15s",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 14,
-                }}
-              >
-                <div style={{ width: 38, height: 38, borderRadius: 10, background: active ? acc.main : acc.light, border: `1.5px solid ${active ? acc.main : acc.border}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, flexShrink: 0, transition: "all 0.15s" }}>
-                  {u.role === "founder" ? "⚡" : u.role === "operations" ? "📋" : "✏️"}
-                </div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 15, fontWeight: 700, color: "#111" }}>{u.name}</div>
-                  <div style={{ fontSize: 12, color: "#9ca3af", marginTop: 1, fontWeight: 500 }}>{acc.label}</div>
-                </div>
-                {active && <div style={{ width: 8, height: 8, borderRadius: "50%", background: acc.main, flexShrink: 0 }} />}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* PIN entry */}
-        {selected && (
-          <div style={{ animation: "fadeUp 0.2s ease" }}>
-            <div style={{ background: "#fff", border: "1.5px solid #e5e0d8", borderRadius: 12, padding: "18px 20px" }}>
-              <div style={{ fontSize: 12, color: "#6b7280", fontWeight: 600, letterSpacing: "0.04em", textTransform: "uppercase", marginBottom: 10 }}>PIN for {selected.name}</div>
-              <input
-                type="password"
-                value={pin}
-                onChange={e => { setPin(e.target.value); setError(""); }}
-                onKeyDown={e => e.key === "Enter" && handleLogin()}
-                maxLength={4}
-                placeholder="····"
-                autoFocus
-                style={{ width: "100%", background: "#f9f7f4", border: `1.5px solid ${error ? "#fca5a5" : "#d9d4cc"}`, borderRadius: 9, padding: "12px 16px", color: "#111", fontSize: 22, letterSpacing: 12, textAlign: "center", fontFamily: "monospace", marginBottom: error ? 8 : 14 }}
-              />
-              {error && <div style={{ color: "#b91c1c", fontSize: 12.5, textAlign: "center", marginBottom: 10 }}>{error}</div>}
-              <button
-                onClick={handleLogin}
-                style={{ width: "100%", background: ACCENT[selected.role].main, color: "#fff", border: "none", borderRadius: 9, padding: "13px", fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}
-              >
-                Enter Dashboard →
-              </button>
-            </div>
-            <div style={{ fontSize: 11.5, color: "#9ca3af", textAlign: "center", marginTop: 12 }}>
-              Demo PINs: Sheldon = 1234 · Sati = 5678 · Hayden = 9012
-            </div>
+        {/* Login form */}
+        <div style={{ background: "#fff", border: "1.5px solid #e5e0d8", borderRadius: 14, padding: "24px 22px" }}>
+          <div style={{ marginBottom: 14 }}>
+            <div style={{ fontSize: 11, color: "#6b7280", fontWeight: 600, letterSpacing: "0.04em", textTransform: "uppercase", marginBottom: 6 }}>Email</div>
+            <input
+              type="email"
+              value={email}
+              onChange={e => { setEmail(e.target.value); setError(""); }}
+              onKeyDown={e => e.key === "Enter" && document.getElementById("pwInput").focus()}
+              placeholder="your@email.com"
+              autoFocus
+              style={{ width: "100%", background: "#f9f7f4", border: `1.5px solid ${error ? "#fca5a5" : "#d9d4cc"}`, borderRadius: 9, padding: "11px 14px", color: "#111", fontSize: 14, fontFamily: "'DM Sans', sans-serif" }}
+            />
           </div>
-        )}
+          <div style={{ marginBottom: error ? 10 : 18 }}>
+            <div style={{ fontSize: 11, color: "#6b7280", fontWeight: 600, letterSpacing: "0.04em", textTransform: "uppercase", marginBottom: 6 }}>Password</div>
+            <input
+              id="pwInput"
+              type="password"
+              value={password}
+              onChange={e => { setPassword(e.target.value); setError(""); }}
+              onKeyDown={e => e.key === "Enter" && handleLogin()}
+              placeholder="••••••••"
+              style={{ width: "100%", background: "#f9f7f4", border: `1.5px solid ${error ? "#fca5a5" : "#d9d4cc"}`, borderRadius: 9, padding: "11px 14px", color: "#111", fontSize: 14, fontFamily: "'DM Sans', sans-serif" }}
+            />
+          </div>
+          {error && <div style={{ color: "#b91c1c", fontSize: 12.5, marginBottom: 14, textAlign: "center" }}>{error}</div>}
+          <button
+            onClick={handleLogin}
+            disabled={loading}
+            style={{ width: "100%", background: loading ? "#9ca3af" : acc.main, color: "#fff", border: "none", borderRadius: 9, padding: "13px", fontSize: 14, fontWeight: 700, cursor: loading ? "not-allowed" : "pointer", fontFamily: "'DM Sans', sans-serif", transition: "background 0.15s" }}
+          >
+            {loading ? "Signing in…" : "Sign In →"}
+          </button>
+        </div>
+
+        <div style={{ fontSize: 11.5, color: "#9ca3af", textAlign: "center", marginTop: 16, lineHeight: 1.7 }}>
+          Use the email and password Sheldon set up for you.<br/>
+          Contact Sheldon if you need a password reset.
+        </div>
       </div>
     </div>
   );
 };
-
 // ============================================================
-// MAIN APP
+// MAIN APP — Supabase Auth + Data
 // ============================================================
 export default function App() {
   const [user, setUser] = useState(null);
-  const { state, update, addNotification, clearNotification } = useSharedState();
+  const [authChecked, setAuthChecked] = useState(false);
+
+  // On mount: check for existing session
+  useEffect(() => {
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        const { data: profile } = await supabase.from("profiles").select("*").eq("id", session.user.id).single();
+        if (profile) setUser({ ...profile, email: session.user.email });
+      }
+      setAuthChecked(true);
+    };
+    checkSession();
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === "SIGNED_OUT" || !session) { setUser(null); }
+    });
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const { state, update, addNotification, clearNotification, reload } = useSharedState(user?.role);
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    setUser(null);
+  };
+
+  // Loading state while checking session
+  if (!authChecked) {
+    return (
+      <div style={{ minHeight: "100vh", background: "#f4f0eb", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div style={{ textAlign: "center" }}>
+          <div style={{ fontSize: 28, marginBottom: 12 }}>🖨️</div>
+          <div style={{ fontSize: 14, color: "#9ca3af", fontFamily: "'DM Sans', sans-serif" }}>Loading POD Studio OS…</div>
+        </div>
+      </div>
+    );
+  }
 
   if (!user) return <LoginScreen onLogin={setUser} />;
 
+  // Data isn't loaded yet — show skeleton
+  if (!state.loaded) {
+    return (
+      <div style={{ minHeight: "100vh", background: "#f4f0eb", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div style={{ textAlign: "center" }}>
+          <div style={{ fontSize: 28, marginBottom: 12 }}>🖨️</div>
+          <div style={{ fontSize: 14, color: "#9ca3af", fontFamily: "'DM Sans', sans-serif" }}>Loading your dashboard…</div>
+        </div>
+      </div>
+    );
+  }
+
   const accent = ACCENT[user.role];
-  const notifications = state.notifications[user.role];
+  const notifications = state.notifications || [];
   const greeting = getGreeting();
 
   const roleLabel = {
     founder: "Strategy & Research",
-    operations: "Listings & Operations",
+    operations: "Research & Operations",
     designer: "Design & Production",
   };
 
@@ -1574,6 +1679,52 @@ export default function App() {
     founder: "VALIDATE · BRIEF · ANALYSE",
     operations: "RESEARCH · LISTINGS · CLIENTS",
     designer: "DESIGN · CREATE · UPLOAD",
+  };
+
+  // Wrap update calls for each dashboard — translates old key-based API to table-based
+  const dbUpdate = async (key, val) => {
+    const tableMap = {
+      nicheBriefs:      { table: "niche_briefs",      op: "insert" },
+      trendReports:     { table: "trend_reports",     op: "insert" },
+      urgentTrends:     { table: "urgent_trends",     op: "insert" },
+      designHandoffs:   { table: "design_handoffs",   op: "insert" },
+      listingCopies:    { table: "listing_copies",    op: "insert" },
+      uploadLog:        { table: "upload_log",        op: "insert" },
+      rejectionReports: { table: "rejection_reports", op: "insert" },
+      clients:          { table: "clients",           op: "insert" },
+    };
+
+    // Special case: detergentFund is an upsert to single row
+    if (key === "detergentFund") {
+      await update("detergent_fund", "upsert", { id: 1, amount: val.amount, goal: val.goal });
+      return;
+    }
+
+    // For array updates — if val is an array and longer than current, it's an insert of the first item
+    const mapping = tableMap[key];
+    if (!mapping) { await reload(); return; }
+
+    const currentArr = state[key] || [];
+    if (Array.isArray(val) && val.length > currentArr.length) {
+      // New item is at index 0 (prepended)
+      const newItem = val[0];
+      // Remove client-side id and date fields — Supabase generates these
+      const { id: _id, date: _date, ...insertData } = newItem;
+      // Add created_by
+      const { data: { session } } = await supabase.auth.getSession();
+      const withUser = session ? { ...insertData, created_by: session.user.id } : insertData;
+      await update(mapping.table, "insert", withUser);
+    } else if (Array.isArray(val)) {
+      // It's an in-place update (e.g. status change) — find the changed item
+      for (let i = 0; i < val.length; i++) {
+        const curr = currentArr[i];
+        const next = val[i];
+        if (curr && next && JSON.stringify(curr) !== JSON.stringify(next)) {
+          await update(mapping.table, "update", { id: curr.id, values: next });
+          break;
+        }
+      }
+    }
   };
 
   return (
@@ -1592,9 +1743,9 @@ export default function App() {
           </div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <NotifBell notifications={notifications} onClear={(id) => clearNotification(user.role, id)} accent={accent} />
+          <NotifBell notifications={notifications} onClear={(id) => clearNotification(id)} accent={accent} />
           <button
-            onClick={() => setUser(null)}
+            onClick={handleSignOut}
             style={{ background: "#f9f7f4", border: "1.5px solid #e5e0d8", color: "#6b7280", borderRadius: 8, padding: "6px 14px", fontSize: 12.5, cursor: "pointer", fontWeight: 600 }}
           >
             Sign out
@@ -1622,13 +1773,13 @@ export default function App() {
 
         {/* Dashboard content */}
         {user.role === ROLES.FOUNDER && (
-          <FounderDashboard state={state} update={update} addNotification={addNotification} clearNotification={clearNotification} />
+          <FounderDashboard state={state} update={dbUpdate} addNotification={addNotification} clearNotification={clearNotification} />
         )}
         {user.role === ROLES.OPERATIONS && (
-          <OperationsDashboard state={state} update={update} addNotification={addNotification} clearNotification={clearNotification} />
+          <OperationsDashboard state={state} update={dbUpdate} addNotification={addNotification} clearNotification={clearNotification} />
         )}
         {user.role === ROLES.DESIGNER && (
-          <DesignerDashboard state={state} update={update} addNotification={addNotification} clearNotification={clearNotification} />
+          <DesignerDashboard state={state} update={dbUpdate} addNotification={addNotification} clearNotification={clearNotification} />
         )}
       </div>
     </div>
