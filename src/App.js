@@ -72,6 +72,7 @@ const useSharedState = (userRole) => {
     uploadLog: [],
     rejectionReports: [],
     clients: [],
+    pipeline: [],
     notifications: [],
     loaded: false,
   });
@@ -89,6 +90,7 @@ const useSharedState = (userRole) => {
         { data: uploads },
         { data: rejections },
         { data: clients },
+        { data: pipelineData },
         { data: notifs },
       ] = await Promise.all([
         supabase.from("detergent_fund").select("*").single(),
@@ -100,6 +102,7 @@ const useSharedState = (userRole) => {
         supabase.from("upload_log").select("*").order("created_at", { ascending: false }).limit(50),
         supabase.from("rejection_reports").select("*").order("created_at", { ascending: false }).limit(20),
         supabase.from("clients").select("*").order("created_at", { ascending: false }),
+        supabase.from("pipeline").select("*").order("created_at", { ascending: false }).limit(100),
         supabase.from("notifications").select("*").eq("for_role", userRole).eq("read", false).order("created_at", { ascending: false }).limit(20),
       ]);
       setState({
@@ -112,6 +115,7 @@ const useSharedState = (userRole) => {
         uploadLog: uploads || [],
         rejectionReports: rejections || [],
         clients: clients || [],
+        pipeline: pipelineData || [],
         notifications: notifs || [],
         loaded: true,
       });
@@ -506,6 +510,7 @@ const FounderDashboard = ({ state, update, addNotification }) => {
     { id: "rb", label: "Redbubble Listing" },
     { id: "rejection", label: "Rejection Fix" },
     { id: "clients", label: "Client Pipeline" },
+    { id: "pipeline", label: "Pipeline" },
     { id: "performance", label: "Performance" },
     { id: "checklist", label: "Checklist" },
   ];
@@ -721,6 +726,21 @@ const FounderDashboard = ({ state, update, addNotification }) => {
         </div>
       )}
 
+      {activeTab === "pipeline" && (
+        <div>
+          <Alert accent={accent}>
+            Track every niche idea from first capture to first sale. Move items forward as the team completes each stage.
+          </Alert>
+          <PipelineBoard
+            state={state}
+            update={update}
+            addNotification={addNotification}
+            accent={accent}
+            userRole="founder"
+          />
+        </div>
+      )}
+
       {activeTab === "performance" && (
         <div>
           <SectionTitle accent={accent}>Weekly Performance Log</SectionTitle>
@@ -749,13 +769,18 @@ const FounderDashboard = ({ state, update, addNotification }) => {
             "Validate 2 niches using the Niche Validate tool",
             "Send the weekly design brief to Hayden (Monday)",
             "Generate Merch listing copy for any completed handoffs",
+            "Update the Opportunity Pipeline — move niches forward",
             "Review and update client pipeline statuses",
             "Log weekly performance numbers and get action items",
             "Check Wise for incoming payments — update client records",
             "Review detergent fund balance",
+            "Run the Sunday Family Review (every Sunday evening)",
           ]} />
           <div style={{ marginTop: 20 }}>
             <DetergentFund state={state} update={update} editable={true} accent={accent} />
+          </div>
+          <div style={{ marginTop: 20 }}>
+            <SundayReview state={state} accent={accent} />
           </div>
         </div>
       )}
@@ -1152,6 +1177,9 @@ const OperationsDashboard = ({ state, update, addNotification }) => {
             "Update payment status for any Wise receipts received",
           ]} />
           <div style={{ marginTop: 20 }}>
+            <PipelineBoard state={state} update={update} addNotification={addNotification} accent={accent} userRole="operations" />
+          </div>
+          <div style={{ marginTop: 20 }}>
             <DetergentFund state={state} update={update} editable={false} accent={accent} />
           </div>
         </div>
@@ -1488,17 +1516,9 @@ const DesignerDashboard = ({ state, update, addNotification }) => {
             "Upload niche 2 to both platforms + report Redbubble views to Dad (Friday)",
           ]} />
 
-          <SectionTitle accent={accent} style={{ marginTop: 20 }}>Weekly Design Progress</SectionTitle>
-          <Card accent={accent}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-              <div style={{ fontSize: 13.5, color: "#374151", fontWeight: 500 }}>Designs this week</div>
-              <div style={{ fontSize: 26, fontWeight: 700, color: accent.main }}>{state.uploadLog.filter(u => u.date === new Date().toDateString()).length} <span style={{ fontSize: 14, color: "#9ca3af", fontWeight: 400 }}>/ 10</span></div>
-            </div>
-            <div style={{ height: 7, background: "#f0ece6", borderRadius: 4, overflow: "hidden" }}>
-              <div style={{ height: "100%", width: `${Math.min(100, state.uploadLog.filter(u => u.date === new Date().toDateString()).length * 10)}%`, background: accent.main, borderRadius: 4, transition: "width 0.5s" }} />
-            </div>
-            <div style={{ fontSize: 12, color: "#9ca3af", marginTop: 8 }}>Target: 10 designs/week · 500 in 12 months = income inflection point</div>
-          </Card>
+          <div style={{ marginTop: 20 }}>
+            <HaydenStats state={state} accent={accent} />
+          </div>
 
           <div style={{ marginTop: 16 }}>
             <DetergentFund state={state} update={update} editable={false} accent={accent} />
@@ -1506,6 +1526,351 @@ const DesignerDashboard = ({ state, update, addNotification }) => {
         </div>
       )}
     </div>
+  );
+};
+
+
+// ============================================================
+// WEEKLY SCOREBOARD — role-specific metrics bar
+// ============================================================
+const WeeklyScoreboard = ({ state, role, accent }) => {
+  const thisWeek = () => {
+    const now = new Date();
+    const startOfWeek = new Date(now);
+    startOfWeek.setDate(now.getDate() - now.getDay());
+    startOfWeek.setHours(0,0,0,0);
+    return startOfWeek.toISOString();
+  };
+  const weekStart = thisWeek();
+
+  const metrics = {
+    founder: [
+      { label: "Briefs Sent", value: (state.nicheBriefs||[]).filter(b => b.created_at >= weekStart).length, target: 2, icon: "📋" },
+      { label: "Niches Validated", value: (state.trendReports||[]).filter(r => r.created_at >= weekStart).length, target: 4, icon: "🔍" },
+      { label: "Listings Generated", value: (state.listingCopies||[]).filter(l => l.created_at >= weekStart).length, target: 10, icon: "📝" },
+      { label: "Active Clients", value: (state.clients||[]).filter(c => c.status !== "Paid").length, target: 5, icon: "💼" },
+      { label: "Pipeline Items", value: (state.pipeline||[]).length, target: 20, icon: "🚀" },
+    ],
+    operations: [
+      { label: "Trends Captured", value: (state.urgentTrends||[]).filter(t => t.created_at >= weekStart).length, target: 5, icon: "🔥" },
+      { label: "Reports Submitted", value: (state.trendReports||[]).filter(r => r.created_at >= weekStart).length, target: 1, icon: "📊" },
+      { label: "Listings Uploaded", value: (state.listingCopies||[]).filter(l => l.status === "uploaded" && l.created_at >= weekStart).length, target: 10, icon: "⬆️" },
+      { label: "RB Listings Written", value: (state.designHandoffs||[]).filter(h => h.rb_status === "completed" && h.created_at >= weekStart).length, target: 5, icon: "✍️" },
+    ],
+    designer: [
+      { label: "Designs Created", value: (state.uploadLog||[]).filter(u => u.created_at >= weekStart).length, target: 10, icon: "🎨" },
+      { label: "Live Designs", value: (state.uploadLog||[]).filter(u => u.status === "Live").length, target: 50, icon: "✅" },
+      { label: "Handoffs Submitted", value: (state.designHandoffs||[]).filter(h => h.created_at >= weekStart).length, target: 2, icon: "🤝" },
+      { label: "Rejections", value: (state.rejectionReports||[]).filter(r => r.created_at >= weekStart).length, target: 0, icon: "⚠️", inverse: true },
+    ],
+  };
+
+  const items = metrics[role] || [];
+  const weekTotal = items.filter(m => !m.inverse).reduce((sum, m) => sum + m.value, 0);
+
+  return (
+    <div style={{ background: "#fff", border: `1.5px solid ${accent.border}`, borderRadius: 14, padding: "16px 20px", marginBottom: 20 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+        <div style={{ fontSize: 11, fontWeight: 700, color: accent.main, letterSpacing: "0.08em", textTransform: "uppercase" }}>This Week</div>
+        <div style={{ fontSize: 11, color: "#9ca3af", fontWeight: 500 }}>Week of {new Date().toLocaleDateString("en-US", { month: "short", day: "numeric" })}</div>
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: `repeat(${items.length}, 1fr)`, gap: 12 }}>
+        {items.map((m, i) => {
+          const pct = m.target > 0 ? Math.min(100, Math.round((m.value / m.target) * 100)) : 0;
+          const isGood = m.inverse ? m.value === 0 : m.value >= m.target;
+          const barColor = m.inverse && m.value > 0 ? "#ef4444" : isGood ? accent.main : accent.muted;
+          return (
+            <div key={i} style={{ textAlign: "center" }}>
+              <div style={{ fontSize: 18, marginBottom: 4 }}>{m.icon}</div>
+              <div style={{ fontSize: 22, fontWeight: 800, color: m.inverse && m.value > 0 ? "#ef4444" : accent.main, lineHeight: 1 }}>{m.value}</div>
+              <div style={{ fontSize: 10, color: "#9ca3af", marginBottom: 6, marginTop: 2, fontWeight: 500 }}>/ {m.target}</div>
+              <div style={{ height: 4, background: "#f0ece6", borderRadius: 2, overflow: "hidden" }}>
+                <div style={{ height: "100%", width: `${pct}%`, background: barColor, borderRadius: 2, transition: "width 0.5s" }} />
+              </div>
+              <div style={{ fontSize: 10, color: "#9ca3af", marginTop: 4, fontWeight: 600, letterSpacing: "0.02em" }}>{m.label}</div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
+// ============================================================
+// OPPORTUNITY PIPELINE
+// ============================================================
+const PIPELINE_STAGES = ["Captured", "Validated", "Designed", "Listed", "Live", "Sold"];
+
+const PipelineBoard = ({ state, update, addNotification, accent, userRole }) => {
+  const [showAdd, setShowAdd] = useState(false);
+  const [newItem, setNewItem] = useState({ niche: "", design_angle: "", notes: "", stage: "Captured" });
+  const [loading, setLoading] = useState(false);
+
+  const pipeline = state.pipeline || [];
+
+  const moveStage = async (item, direction) => {
+    const idx = PIPELINE_STAGES.indexOf(item.stage);
+    const newStage = PIPELINE_STAGES[idx + direction];
+    if (!newStage) return;
+    await update("pipeline", [
+      { ...item, stage: newStage },
+      ...pipeline.filter(p => p.id !== item.id),
+    ]);
+    if (newStage === "Live") addNotification("founder", `🚀 "${item.niche}" is now LIVE on the platform!`);
+    if (newStage === "Sold") addNotification("founder", `💰 First sale recorded for "${item.niche}"!`);
+  };
+
+  const addItem = async () => {
+    if (!newItem.niche) return;
+    setLoading(true);
+    await update("pipeline", [{ ...newItem, id: Date.now(), date: new Date().toDateString() }, ...pipeline]);
+    setNewItem({ niche: "", design_angle: "", notes: "", stage: "Captured" });
+    setShowAdd(false);
+    setLoading(false);
+  };
+
+  const stageColors = {
+    "Captured":  "#6b7280",
+    "Validated": "#b5451b",
+    "Designed":  "#5c5edc",
+    "Listed":    "#d97706",
+    "Live":      "#059669",
+    "Sold":      "#2d6a4f",
+  };
+
+  return (
+    <div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+        <SectionTitle accent={accent} style={{ marginBottom: 0, borderBottom: "none", paddingBottom: 0 }}>Opportunity Pipeline</SectionTitle>
+        {userRole === "founder" && (
+          <Btn accent={accent} small onClick={() => setShowAdd(!showAdd)}>+ Add Niche</Btn>
+        )}
+      </div>
+
+      {showAdd && (
+        <Card accent={accent}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: accent.main, letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 12 }}>New Pipeline Entry</div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 10 }}>
+            <Field label="Niche" value={newItem.niche} onChange={v => setNewItem(p => ({...p, niche: v}))} placeholder="e.g. Fishing Dad" small />
+            <Field label="Design angle" value={newItem.design_angle} onChange={v => setNewItem(p => ({...p, design_angle: v}))} placeholder="e.g. Humour + text-based" small />
+          </div>
+          <Field label="Notes" value={newItem.notes} onChange={v => setNewItem(p => ({...p, notes: v}))} placeholder="Any context for the team…" small />
+          <Btn accent={accent} small disabled={!newItem.niche || loading} onClick={addItem}>Add to Pipeline</Btn>
+        </Card>
+      )}
+
+      {/* Stage columns */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 8, marginBottom: 16 }}>
+        {PIPELINE_STAGES.map(stage => {
+          const items = pipeline.filter(p => p.stage === stage);
+          return (
+            <div key={stage} style={{ background: "#f9f7f4", border: "1.5px solid #e5e0d8", borderRadius: 10, padding: "10px 8px", minHeight: 80 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: stageColors[stage], letterSpacing: "0.06em", textTransform: "uppercase" }}>{stage}</div>
+                <span style={{ background: stageColors[stage]+"20", color: stageColors[stage], borderRadius: 10, padding: "1px 6px", fontSize: 10, fontWeight: 700 }}>{items.length}</span>
+              </div>
+              {items.map(item => (
+                <div key={item.id} style={{ background: "#fff", border: "1.5px solid #e5e0d8", borderRadius: 8, padding: "8px 8px", marginBottom: 6 }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: "#111", marginBottom: 2, lineHeight: 1.3 }}>{item.niche}</div>
+                  {item.design_angle && <div style={{ fontSize: 10, color: "#6b7280", marginBottom: 6, lineHeight: 1.3 }}>{item.design_angle}</div>}
+                  {userRole === "founder" && (
+                    <div style={{ display: "flex", gap: 4 }}>
+                      {PIPELINE_STAGES.indexOf(item.stage) > 0 && (
+                        <button onClick={() => moveStage(item, -1)} style={{ background: "#f0ece6", border: "none", borderRadius: 4, padding: "2px 6px", fontSize: 10, cursor: "pointer", color: "#6b7280" }}>←</button>
+                      )}
+                      {PIPELINE_STAGES.indexOf(item.stage) < PIPELINE_STAGES.length - 1 && (
+                        <button onClick={() => moveStage(item, 1)} style={{ background: accent.light, border: `1px solid ${accent.border}`, borderRadius: 4, padding: "2px 6px", fontSize: 10, cursor: "pointer", color: accent.text, fontWeight: 700 }}>→</button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ))}
+              {items.length === 0 && <div style={{ fontSize: 10, color: "#c4bdb4", textAlign: "center", paddingTop: 8 }}>Empty</div>}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Summary bar */}
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        {PIPELINE_STAGES.map(stage => {
+          const count = pipeline.filter(p => p.stage === stage).length;
+          return count > 0 ? (
+            <div key={stage} style={{ background: stageColors[stage]+"15", border: `1.5px solid ${stageColors[stage]}40`, borderRadius: 8, padding: "4px 10px", fontSize: 11, fontWeight: 700, color: stageColors[stage] }}>
+              {count} {stage}
+            </div>
+          ) : null;
+        })}
+        {pipeline.length === 0 && <div style={{ fontSize: 13, color: "#9ca3af" }}>No niches in pipeline yet. Add your first one above.</div>}
+      </div>
+    </div>
+  );
+};
+
+// ============================================================
+// SUNDAY FAMILY REVIEW
+// ============================================================
+const SundayReview = ({ state, accent }) => {
+  const [output, setOutput] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const thisWeek = () => {
+    const now = new Date();
+    const startOfWeek = new Date(now);
+    startOfWeek.setDate(now.getDate() - now.getDay());
+    startOfWeek.setHours(0,0,0,0);
+    return startOfWeek.toISOString();
+  };
+  const weekStart = thisWeek();
+
+  const buildContext = () => {
+    const briefs = (state.nicheBriefs||[]).filter(b => b.created_at >= weekStart).length;
+    const trendsCapt = (state.urgentTrends||[]).filter(t => t.created_at >= weekStart).length;
+    const designsCreated = (state.uploadLog||[]).filter(u => u.created_at >= weekStart).length;
+    const liveDesigns = (state.uploadLog||[]).filter(u => u.status === "Live").length;
+    const listingsGen = (state.listingCopies||[]).filter(l => l.created_at >= weekStart).length;
+    const listingsUp = (state.listingCopies||[]).filter(l => l.status === "uploaded" && l.created_at >= weekStart).length;
+    const handoffs = (state.designHandoffs||[]).filter(h => h.created_at >= weekStart).length;
+    const rejections = (state.rejectionReports||[]).filter(r => r.created_at >= weekStart).length;
+    const clients = (state.clients||[]).length;
+    const pipelineLive = (state.pipeline||[]).filter(p => p.stage === "Live").length;
+    const pipelineSold = (state.pipeline||[]).filter(p => p.stage === "Sold").length;
+
+    return { briefs, trendsCapt, designsCreated, liveDesigns, listingsGen, listingsUp, handoffs, rejections, clients, pipelineLive, pipelineSold };
+  };
+
+  const generate = async () => {
+    setLoading(true); setOutput("");
+    const ctx = buildContext();
+    const prompt = `You are the operating system for a family print-on-demand business. Generate a Sunday Family Review based on this week's activity data.
+
+WEEK OF: ${new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
+
+THIS WEEK'S DATA:
+- Briefs sent by Sheldon (Dad): ${ctx.briefs}
+- Trends captured by Sati (Mum): ${ctx.trendsCapt}
+- Designs created by Hayden (Son): ${ctx.designsCreated}
+- Total live designs: ${ctx.liveDesigns}
+- Listing copy generated: ${ctx.listingsGen}
+- Listings uploaded to Merch: ${ctx.listingsUp}
+- Design handoffs completed: ${ctx.handoffs}
+- Rejections this week: ${ctx.rejections}
+- Active clients (List Peak): ${ctx.clients}
+- Niches live on platforms: ${ctx.pipelineLive}
+- Niches with first sales: ${ctx.pipelineSold}
+
+Write a warm, honest Sunday review in this exact format:
+
+🏆 WINS THIS WEEK
+[List 2-3 genuine wins based on the data. Be specific. If numbers are zero, acknowledge the effort to set up systems.]
+
+⚠️ MISSES
+[List 1-2 honest gaps. Be constructive, not harsh. If everything was great, note what the stretch goal for next week should be.]
+
+🎯 TOP 3 FOR NEXT WEEK
+[Three specific, achievable actions for the family — one per person where possible.]
+
+💡 ONE THING TO REMEMBER
+[One motivational sentence grounded in the reality of building a POD business from scratch in Trinidad. Keep it real, not generic.]
+
+Keep the whole review under 250 words. Write like you're part of the family, not a consultant.`;
+
+    await callClaude(prompt, setOutput);
+    setLoading(false);
+  };
+
+  return (
+    <Card accent={accent}>
+      <SectionTitle accent={accent} style={{ marginBottom: 10 }}>Sunday Family Review</SectionTitle>
+      <Alert accent={accent} style={{ marginBottom: 12 }}>
+        Run every Sunday evening. Auto-reads this week's activity and generates a team summary — wins, misses, and next week's top 3.
+      </Alert>
+      <Btn accent={accent} disabled={loading} onClick={generate}>
+        {loading ? "Generating review…" : "Generate This Week's Review →"}
+      </Btn>
+      {loading && <Spinner accent={accent} />}
+      {output && (
+        <div style={{ background: "#fff", border: `1.5px solid ${accent.border}`, borderRadius: 10, padding: "16px 18px", marginTop: 14, fontSize: 13.5, color: "#374151", lineHeight: 1.85, whiteSpace: "pre-wrap", animation: "fadeUp 0.2s" }}>
+          {output}
+          <button onClick={() => navigator.clipboard.writeText(output)}
+            style={{ display: "block", marginTop: 12, background: accent.light, border: `1.5px solid ${accent.border}`, color: accent.text, borderRadius: 8, padding: "5px 14px", fontSize: 11, cursor: "pointer", fontFamily: "'DM Sans', sans-serif", fontWeight: 600 }}>
+            Copy to share with family →
+          </button>
+        </div>
+      )}
+    </Card>
+  );
+};
+
+// ============================================================
+// HAYDEN DESIGN STATS
+// ============================================================
+const HaydenStats = ({ state, accent }) => {
+  const uploads = state.uploadLog || [];
+  const handoffs = state.designHandoffs || [];
+  const live = uploads.filter(u => u.status === "Live").length;
+  const total = uploads.length;
+  const rejected = uploads.filter(u => u.status === "Rejected").length;
+  const thisWeek = (() => { const d = new Date(); d.setDate(d.getDate() - d.getDay()); d.setHours(0,0,0,0); return d.toISOString(); })();
+  const weekDesigns = uploads.filter(u => u.created_at >= thisWeek).length;
+  const target500weeks = Math.ceil((500 - live) / 10);
+  const acceptRate = total > 0 ? Math.round(((total - rejected) / total) * 100) : 100;
+
+  return (
+    <Card accent={accent}>
+      <SectionTitle accent={accent} style={{ marginBottom: 14 }}>Your Design Stats</SectionTitle>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16 }}>
+        {[
+          { label: "Total Uploaded", value: total, icon: "📤", sub: "all time" },
+          { label: "Live Designs", value: live, icon: "✅", sub: "on platforms" },
+          { label: "This Week", value: weekDesigns, icon: "🗓️", sub: "of 10 target" },
+          { label: "Acceptance Rate", value: `${acceptRate}%`, icon: "🎯", sub: `${rejected} rejected` },
+        ].map((s, i) => (
+          <div key={i} style={{ background: "#f9f7f4", border: "1.5px solid #e5e0d8", borderRadius: 10, padding: "12px 14px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+              <div>
+                <div style={{ fontSize: 24, fontWeight: 800, color: accent.main, lineHeight: 1 }}>{s.value}</div>
+                <div style={{ fontSize: 11, color: "#9ca3af", marginTop: 3, fontWeight: 500 }}>{s.sub}</div>
+              </div>
+              <div style={{ fontSize: 20 }}>{s.icon}</div>
+            </div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: "#374151", marginTop: 8, letterSpacing: "0.02em" }}>{s.label}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Progress to 500 */}
+      <div style={{ marginBottom: 14 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: "#374151" }}>Road to 500 Live Designs</div>
+          <div style={{ fontSize: 12, fontWeight: 700, color: accent.main }}>{live}/500</div>
+        </div>
+        <div style={{ height: 8, background: "#f0ece6", borderRadius: 4, overflow: "hidden", marginBottom: 6 }}>
+          <div style={{ height: "100%", width: `${Math.min(100, (live/500)*100)}%`, background: `linear-gradient(90deg, ${accent.main}, ${accent.muted})`, borderRadius: 4, transition: "width 0.5s" }} />
+        </div>
+        <div style={{ fontSize: 11, color: "#9ca3af" }}>
+          {live < 500
+            ? `${500 - live} designs to go · at 10/week that's ~${target500weeks} weeks`
+            : "🎉 500 designs milestone reached — income inflection point!"}
+        </div>
+      </div>
+
+      {/* Handoffs this week */}
+      <div style={{ paddingTop: 12, borderTop: "1.5px solid #f0ece6" }}>
+        <div style={{ fontSize: 11, fontWeight: 700, color: "#6b7280", letterSpacing: "0.04em", textTransform: "uppercase", marginBottom: 8 }}>Recent Handoffs</div>
+        {handoffs.slice(0, 3).length === 0
+          ? <div style={{ fontSize: 13, color: "#9ca3af" }}>No handoffs yet — submit your first batch via the Handoff tab.</div>
+          : handoffs.slice(0, 3).map((h, i) => (
+            <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "7px 0", borderBottom: "1px solid #f0ece6" }}>
+              <div style={{ fontSize: 13, color: "#374151", fontWeight: 500 }}>{h.niche}</div>
+              <div style={{ display: "flex", gap: 6 }}>
+                <Badge label={`${Array.isArray(h.designs) ? h.designs.length : 1} designs`} color={accent.main} />
+                <Badge label={h.merch_status === "pending_merch_listings" ? "Pending Merch" : "Done"} color={h.merch_status === "pending_merch_listings" ? "#d97706" : "#059669"} />
+              </div>
+            </div>
+          ))}
+      </div>
+    </Card>
   );
 };
 
@@ -1692,6 +2057,7 @@ export default function App() {
       uploadLog:        { table: "upload_log",        op: "insert" },
       rejectionReports: { table: "rejection_reports", op: "insert" },
       clients:          { table: "clients",           op: "insert" },
+      pipeline:         { table: "pipeline",          op: "insert" },
     };
 
     // Special case: detergentFund is an upsert to single row
@@ -1770,6 +2136,9 @@ export default function App() {
             ))}
           </div>
         </div>
+
+        {/* Weekly Scoreboard — shown to all roles */}
+        <WeeklyScoreboard state={state} role={user.role} accent={accent} />
 
         {/* Dashboard content */}
         {user.role === ROLES.FOUNDER && (
