@@ -14,20 +14,26 @@ const supabase = createClient(
 // ============================================================
 const ROLES = { FOUNDER: "founder", OPERATIONS: "operations", DESIGNER: "designer" };
 
-// Light theme accent colours — role-specific tints on top of the warm neutral base
+// Role-specific accent colours + sidebar theming
 const ACCENT = {
   founder: {
-    main: "#2d6a4f",       // forest green (primary action)
-    light: "#d8f3dc",      // very light green bg tint
-    mid: "#b7e4c7",        // mid green for borders/dividers
-    border: "#95d5b2",     // border green
-    text: "#1b4332",       // dark green text
-    muted: "#52b788",      // muted green
+    main: "#2d6a4f",       // forest green
+    light: "#d8f3dc",
+    mid: "#b7e4c7",
+    border: "#95d5b2",
+    text: "#1b4332",
+    muted: "#52b788",
     label: "FOUNDER",
     tag: "#2d6a4f",
+    sidebar: "#0f1f18",    // very dark green sidebar
+    sidebarBorder: "#1a3326",
+    sidebarActive: "#2d6a4f",
+    sidebarHover: "#162e21",
+    sidebarText: "#a7f3d0",
+    sidebarMuted: "#6b9e85",
   },
   operations: {
-    main: "#b5451b",       // rust / terracotta
+    main: "#b5451b",       // rust/terracotta
     light: "#fde8de",
     mid: "#f5c4ad",
     border: "#e8966e",
@@ -35,6 +41,12 @@ const ACCENT = {
     muted: "#d4682f",
     label: "OPERATIONS",
     tag: "#b5451b",
+    sidebar: "#1e100a",    // very dark rust sidebar
+    sidebarBorder: "#321808",
+    sidebarActive: "#b5451b",
+    sidebarHover: "#2a1208",
+    sidebarText: "#fed7aa",
+    sidebarMuted: "#9a6347",
   },
   designer: {
     main: "#5c5edc",       // indigo/violet
@@ -45,6 +57,12 @@ const ACCENT = {
     muted: "#7577e0",
     label: "DESIGNER",
     tag: "#5c5edc",
+    sidebar: "#0e0e1f",    // very dark indigo sidebar
+    sidebarBorder: "#1a1a35",
+    sidebarActive: "#5c5edc",
+    sidebarHover: "#16163a",
+    sidebarText: "#c7d2fe",
+    sidebarMuted: "#6366a8",
   },
 };
 
@@ -253,8 +271,8 @@ const callClaude = async (prompt, onChunk) => {
   }
 };
 
-// Model selector pill component — shown in header (Sheldon only)
-const ModelSelector = () => {
+// Model selector pill component — shown in sidebar (Sheldon only)
+const ModelSelector = ({ sidebarMode = false, accent = null }) => {
   const [active, setActive] = useState(getActiveModel());
 
   const toggle = () => {
@@ -264,12 +282,36 @@ const ModelSelector = () => {
   };
 
   const model = AI_MODELS[active];
-  const other = AI_MODELS[active === "gemini" ? "claude" : "gemini"];
+
+  if (sidebarMode && accent) {
+    return (
+      <button
+        onClick={toggle}
+        title={`AI: ${model.label}. Click to switch.`}
+        style={{
+          width: "100%", display: "flex", alignItems: "center", gap: 8,
+          padding: "7px 10px", background: accent.sidebarActive + "20",
+          border: `1px solid ${accent.sidebarActive}50`,
+          borderRadius: 8, cursor: "pointer", transition: "all 0.15s",
+          fontFamily: "'DM Sans', sans-serif",
+        }}
+      >
+        <span style={{ fontSize: 13, color: accent.sidebarText }}>{model.icon}</span>
+        <div style={{ flex: 1, textAlign: "left" }}>
+          <div style={{ fontSize: 10.5, fontWeight: 700, color: "#fff" }}>{model.label}</div>
+          <div style={{ fontSize: 9, color: accent.sidebarMuted }}>Click to switch model</div>
+        </div>
+        {model.free && (
+          <span style={{ fontSize: 8, background: "#065f46", color: "#6ee7b7", borderRadius: 3, padding: "1px 5px", fontWeight: 700 }}>FREE</span>
+        )}
+      </button>
+    );
+  }
 
   return (
     <button
       onClick={toggle}
-      title={`Currently using ${model.label}. Click to switch to ${other.label}.`}
+      title={`Currently using ${model.label}. Click to switch.`}
       style={{
         display: "flex", alignItems: "center", gap: 6,
         background: "#fff", border: `1.5px solid ${model.color}33`,
@@ -296,6 +338,8 @@ const GlobalStyles = ({ accentMain }) => (
 
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+    html, body, #root { height: 100%; }
+
     body {
       font-family: 'DM Sans', system-ui, sans-serif;
       background: #f4f0eb;
@@ -306,14 +350,19 @@ const GlobalStyles = ({ accentMain }) => (
     @keyframes spin    { to { transform: rotate(360deg); } }
     @keyframes fadeUp  { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
     @keyframes shimmer { 0%,100% { opacity: 1; } 50% { opacity: 0.45; } }
+    @keyframes slideIn { from { opacity: 0; transform: translateX(-8px); } to { opacity: 1; transform: translateX(0); } }
 
     textarea, input, select { outline: none; font-family: 'DM Sans', sans-serif; }
     textarea:focus, input:focus, select:focus { border-color: ${accentMain} !important; box-shadow: 0 0 0 3px ${accentMain}1a; }
 
-    ::-webkit-scrollbar          { width: 6px; height: 6px; }
-    ::-webkit-scrollbar-track    { background: #ede8e0; }
-    ::-webkit-scrollbar-thumb    { background: #c4bdb4; border-radius: 3px; }
-    ::-webkit-scrollbar-thumb:hover { background: #a89f96; }
+    ::-webkit-scrollbar          { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track    { background: transparent; }
+    ::-webkit-scrollbar-thumb    { background: rgba(255,255,255,0.15); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.25); }
+
+    .content-scroll::-webkit-scrollbar-track { background: #ede8e0; }
+    .content-scroll::-webkit-scrollbar-thumb { background: #c4bdb4; }
+    .content-scroll::-webkit-scrollbar-thumb:hover { background: #a89f96; }
   `}</style>
 );
 
@@ -556,9 +605,9 @@ const NotifBell = ({ notifications, onClear, accent }) => {
 // ============================================================
 // FOUNDER DASHBOARD
 // ============================================================
-const FounderDashboard = ({ state, update, addNotification }) => {
+const FounderDashboard = ({ state, update, addNotification, activePage }) => {
   const accent = ACCENT.founder;
-  const [activeTab, setActiveTab] = useState("brief");
+  const activeTab = activePage || "brief";
   const [loading, setLoading] = useState(false);
   const [output, setOutput] = useState("");
 
@@ -608,23 +657,10 @@ const FounderDashboard = ({ state, update, addNotification }) => {
     chase: (c) => `Write a polite but firm payment chase email to ${c.name}. Invoice amount: $${c.invoice} for ${c.service}. Keep it professional and not aggressive. Sign off as Sheldon from List Peak. Under 80 words.`,
   };
 
-  const tabs = [
-    { id: "brief", label: "Weekly Brief" },
-    { id: "validate", label: "Niche Validate" },
-    { id: "merch", label: "Merch Listing" },
-    { id: "rb", label: "Redbubble Listing" },
-    { id: "rejection", label: "Rejection Fix" },
-    { id: "clients", label: "Client Pipeline" },
-    { id: "pipeline", label: "Pipeline" },
-    { id: "performance", label: "Performance" },
-    { id: "checklist", label: "Checklist" },
-  ];
-
   return (
     <div>
-      <TabBar tabs={tabs} active={activeTab} onChange={(id) => { setActiveTab(id); setOutput(""); }} accent={accent} />
 
-      {activeTab === "brief" && (
+      {(activeTab === "dashboard" || activeTab === "brief") && (
         <div>
           <SectionTitle accent={accent}>Weekly Design Brief for Hayden</SectionTitle>
           <Alert accent={accent}>
@@ -896,9 +932,9 @@ const FounderDashboard = ({ state, update, addNotification }) => {
 // ============================================================
 // OPERATIONS DASHBOARD  (Sati)
 // ============================================================
-const OperationsDashboard = ({ state, update, addNotification }) => {
+const OperationsDashboard = ({ state, update, addNotification, activePage }) => {
   const accent = ACCENT.operations;
-  const [activeTab, setActiveTab] = useState("research");
+  const activeTab = activePage || "dashboard";
   // Per-section loading + output state — prevents cross-contamination
   const [loading01, setLoading01] = useState(false);
   const [output01, setOutput01] = useState("");
@@ -962,20 +998,11 @@ const OperationsDashboard = ({ state, update, addNotification }) => {
     chase:       (c) => `Write a polite but firm payment chase email to ${c.name}. Invoice: $${c.invoice} for ${c.service}. Professional, not aggressive. Sign off as List Peak team. Under 70 words.`,
   };
 
-  const tabs = [
-    { id: "research", label: "Research" },
-    { id: "redbubble", label: "Redbubble" },
-    { id: "merch", label: "Merch Upload" },
-    { id: "clients", label: "Clients" },
-    { id: "checklist", label: "Checklist" },
-  ];
-
   return (
     <div>
-      <TabBar tabs={tabs} active={activeTab} onChange={(id) => { setActiveTab(id); setOutput(""); }} accent={accent} />
 
-      {/* ── RESEARCH TAB ── */}
-      {activeTab === "research" && (
+      {/* ── RESEARCH SECTIONS ── */}
+      {(activeTab === "dashboard" || activeTab === "capture" || activeTab === "report" || activeTab === "seasonal") && (
         <div>
 
           {/* RESEARCH-01 */}
@@ -1069,8 +1096,8 @@ const OperationsDashboard = ({ state, update, addNotification }) => {
         </div>
       )}
 
-      {/* ── REDBUBBLE TAB ── */}
-      {activeTab === "redbubble" && (
+      {/* ── REDBUBBLE SECTIONS ── */}
+      {(activeTab === "rb" || activeTab === "rbrewrite" || activeTab === "customer") && (
         <div>
 
           {/* POD-01 */}
@@ -1321,9 +1348,9 @@ const GeneratorTile = ({ title, description, icon, tag, onLaunch, accent }) => (
 // ============================================================
 // DESIGNER DASHBOARD  (Hayden)
 // ============================================================
-const DesignerDashboard = ({ state, update, addNotification }) => {
+const DesignerDashboard = ({ state, update, addNotification, activePage }) => {
   const accent = ACCENT.designer;
-  const [activeTab, setActiveTab] = useState("brief");
+  const activeTab = activePage || "dashboard";
   const [loading, setLoading] = useState(false);
   const [output, setOutput] = useState("");
 
@@ -1377,18 +1404,8 @@ const DesignerDashboard = ({ state, update, addNotification }) => {
     window.open(`/tools/${files[id]}.html`, "_blank");
   };
 
-  const tabs = [
-    { id: "brief", label: "Brief" },
-    { id: "tools", label: "AI Tools" },
-    { id: "generators", label: "Design Generators" },
-    { id: "handoff", label: "Handoff" },
-    { id: "uploads", label: "Upload Log" },
-    { id: "checklist", label: "Checklist" },
-  ];
-
   return (
     <div>
-      <TabBar tabs={tabs} active={activeTab} onChange={(id) => { setActiveTab(id); setOutput(""); }} accent={accent} />
 
       {activeTab === "brief" && (
         <div>
@@ -2110,6 +2127,797 @@ Be specific with dates. The year is ${currentYear}. Do not reference any prior y
   );
 };
 
+
+
+// ============================================================
+// KPI CARD — reusable metric card with delta
+// ============================================================
+const KpiCard = ({ icon, label, value, delta, deltaLabel, color, sub }) => {
+  const isPositive = delta > 0;
+  const isNeutral = delta === 0 || delta === undefined || delta === null;
+  return (
+    <div style={{ background: "#fff", border: "1.5px solid #e5e0d8", borderRadius: 12, padding: "16px 18px", flex: 1, minWidth: 0 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
+        <div style={{ fontSize: 11, fontWeight: 700, color: "#6b7280", letterSpacing: "0.04em", textTransform: "uppercase", lineHeight: 1.4 }}>{label}</div>
+        <span style={{ fontSize: 18 }}>{icon}</span>
+      </div>
+      <div style={{ fontSize: 30, fontWeight: 800, color: color || "#111", letterSpacing: "-1px", lineHeight: 1 }}>{value}</div>
+      {sub && <div style={{ fontSize: 11, color: "#9ca3af", marginTop: 4 }}>{sub}</div>}
+      {delta !== undefined && delta !== null && (
+        <div style={{ marginTop: 8, fontSize: 11, fontWeight: 600, color: isNeutral ? "#9ca3af" : isPositive ? "#059669" : "#ef4444", display: "flex", alignItems: "center", gap: 4 }}>
+          <span>{isNeutral ? "—" : isPositive ? "↑" : "↓"}</span>
+          <span>{isNeutral ? "No change" : `${Math.abs(delta)} ${deltaLabel || "this week"}`}</span>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ============================================================
+// FUNNEL CHART — visual SVG funnel for Sheldon's pipeline
+// ============================================================
+const FunnelChart = ({ stages, accent }) => {
+  const max = Math.max(...stages.map(s => s.value), 1);
+  return (
+    <div style={{ width: "100%" }}>
+      {stages.map((stage, i) => {
+        const pct = Math.max(0.08, stage.value / max);
+        const width = `${20 + pct * 80}%`;
+        return (
+          <div key={i} style={{ marginBottom: 6 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 3 }}>
+                  <span style={{ fontSize: 11, fontWeight: 600, color: "#6b7280" }}>{stage.label}</span>
+                  <span style={{ fontSize: 13, fontWeight: 800, color: accent.main }}>{stage.value}</span>
+                </div>
+                <div style={{ height: 28, background: "#f0ece6", borderRadius: 6, overflow: "hidden", position: "relative" }}>
+                  <div style={{
+                    height: "100%", width, background: `linear-gradient(90deg, ${accent.main}dd, ${accent.main}88)`,
+                    borderRadius: 6, transition: "width 0.6s ease",
+                    display: "flex", alignItems: "center", paddingLeft: 10,
+                  }}>
+                    {stage.value > 0 && <span style={{ fontSize: 10, fontWeight: 700, color: "#fff", whiteSpace: "nowrap" }}>{stage.label}</span>}
+                  </div>
+                </div>
+              </div>
+            </div>
+            {i < stages.length - 1 && stage.value > 0 && (
+              <div style={{ fontSize: 10, color: "#9ca3af", textAlign: "right", marginTop: 2 }}>
+                {Math.round((stages[i + 1].value / stage.value) * 100)}% →
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
+// ============================================================
+// MINI SPARKLINE — SVG line chart
+// ============================================================
+const Sparkline = ({ data, color, height = 40, width = 120 }) => {
+  if (!data || data.length < 2) return <div style={{ height, width, background: "#f0ece6", borderRadius: 4 }} />;
+  const max = Math.max(...data, 1);
+  const min = Math.min(...data);
+  const range = max - min || 1;
+  const pts = data.map((v, i) => {
+    const x = (i / (data.length - 1)) * width;
+    const y = height - ((v - min) / range) * height;
+    return `${x},${y}`;
+  }).join(" ");
+  return (
+    <svg width={width} height={height} style={{ overflow: "visible" }}>
+      <polyline points={pts} fill="none" stroke={color} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+      <circle cx={pts.split(" ").pop().split(",")[0]} cy={pts.split(" ").pop().split(",")[1]} r="3" fill={color} />
+    </svg>
+  );
+};
+
+// ============================================================
+// DATA TABLE — reusable table component
+// ============================================================
+const DataTable = ({ columns, rows, accent, emptyMsg = "No data yet", onRowClick }) => (
+  <div style={{ overflowX: "auto" }}>
+    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+      <thead>
+        <tr style={{ borderBottom: `2px solid ${accent.mid}` }}>
+          {columns.map((col, i) => (
+            <th key={i} style={{ textAlign: "left", padding: "8px 12px", fontSize: 10.5, fontWeight: 700, color: "#6b7280", letterSpacing: "0.05em", textTransform: "uppercase", whiteSpace: "nowrap" }}>
+              {col}
+            </th>
+          ))}
+        </tr>
+      </thead>
+      <tbody>
+        {rows.length === 0 ? (
+          <tr><td colSpan={columns.length} style={{ padding: "20px 12px", textAlign: "center", color: "#9ca3af", fontSize: 13 }}>{emptyMsg}</td></tr>
+        ) : rows.map((row, ri) => (
+          <tr key={ri}
+            onClick={() => onRowClick && onRowClick(row)}
+            style={{ borderBottom: "1px solid #f0ece6", cursor: onRowClick ? "pointer" : "default", transition: "background 0.1s" }}
+            onMouseEnter={e => { if (onRowClick) e.currentTarget.style.background = "#faf8f5"; }}
+            onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
+          >
+            {row.cells.map((cell, ci) => (
+              <td key={ci} style={{ padding: "10px 12px", color: "#374151", verticalAlign: "middle" }}>{cell}</td>
+            ))}
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+);
+
+// ============================================================
+// ACTIVITY FEED
+// ============================================================
+const ActivityFeed = ({ items, accent }) => (
+  <div>
+    {items.length === 0 ? (
+      <div style={{ color: "#9ca3af", fontSize: 13, padding: "12px 0" }}>No recent activity — start using the tools to see activity here.</div>
+    ) : items.map((item, i) => (
+      <div key={i} style={{ display: "flex", gap: 12, padding: "9px 0", borderBottom: "1px solid #f0ece6", alignItems: "flex-start" }}>
+        <div style={{ width: 30, height: 30, background: accent.light, border: `1.5px solid ${accent.border}`, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, flexShrink: 0 }}>{item.icon}</div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 12.5, color: "#374151", lineHeight: 1.45 }}>{item.text}</div>
+          <div style={{ fontSize: 11, color: "#9ca3af", marginTop: 2 }}>{item.time}</div>
+        </div>
+      </div>
+    ))}
+  </div>
+);
+
+// ============================================================
+// TRENDING NICHES — top niches from pipeline with score badges
+// ============================================================
+const TrendingNiches = ({ pipeline, accent }) => {
+  const stageScore = { "Sold": 5, "Live": 4, "Listed": 3, "Designed": 2, "Validated": 1, "Captured": 0 };
+  const scored = [...pipeline].sort((a, b) => (stageScore[b.stage] || 0) - (stageScore[a.stage] || 0)).slice(0, 5);
+  const placeholders = [
+    { niche: "Fishing Dad", pct: "+120%", stage: "Live" },
+    { niche: "Dog Mum", pct: "+98%", stage: "Listed" },
+    { niche: "Mental Health", pct: "+75%", stage: "Validated" },
+    { niche: "Retro Gaming", pct: "+60%", stage: "Captured" },
+    { niche: "Coffee Lover", pct: "+55%", stage: "Captured" },
+  ];
+  const display = scored.length >= 3 ? scored : placeholders;
+  return (
+    <div>
+      {display.map((item, i) => (
+        <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "9px 0", borderBottom: "1px solid #f0ece6" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <span style={{ fontSize: 12, fontWeight: 800, color: "#9ca3af", width: 18 }}>{i + 1}</span>
+            <span style={{ fontSize: 13, fontWeight: 600, color: "#374151" }}>{item.niche}</span>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <Badge label={item.stage || "Captured"} color={accent.main} />
+            <span style={{ fontSize: 12, fontWeight: 700, color: "#059669" }}>{item.pct || "+new"}</span>
+          </div>
+        </div>
+      ))}
+      {scored.length < 3 && (
+        <div style={{ fontSize: 11, color: "#9ca3af", marginTop: 8, fontStyle: "italic" }}>Sample data — add niches to your Pipeline to see real trends</div>
+      )}
+    </div>
+  );
+};
+
+// ============================================================
+// SHELDON DASHBOARD OVERVIEW
+// ============================================================
+const FounderOverview = ({ state, accent, setActivePage }) => {
+  const pipeline = state.pipeline || [];
+  const uploads = state.uploadLog || [];
+  const briefs = state.nicheBriefs || [];
+  const clients = state.clients || [];
+  const copies = state.listingCopies || [];
+  const trends = state.trendReports || [];
+
+  // KPI data
+  const live = uploads.filter(u => u.status === "Live").length;
+  const pending = copies.filter(l => l.status === "pending_upload").length;
+  const thisWeek = (() => { const d = new Date(); d.setDate(d.getDate() - d.getDay()); d.setHours(0,0,0,0); return d.toISOString(); })();
+  const briefsThisWeek = briefs.filter(b => b.created_at >= thisWeek).length;
+  const activeClients = clients.filter(c => c.status !== "Paid").length;
+
+  // Funnel from pipeline
+  const funnelStages = [
+    { label: "Captured", value: pipeline.filter(p => p.stage === "Captured").length },
+    { label: "Validated", value: pipeline.filter(p => p.stage === "Validated").length },
+    { label: "Designed", value: pipeline.filter(p => p.stage === "Designed").length },
+    { label: "Listed", value: pipeline.filter(p => p.stage === "Listed").length },
+    { label: "Live", value: live },
+  ];
+
+  // My Ideas table
+  const ideaRows = pipeline.slice(0, 8).map(p => ({
+    cells: [
+      <span style={{ fontWeight: 600, color: "#111" }}>{p.niche}</span>,
+      <span style={{ color: "#6b7280" }}>{p.design_angle || "—"}</span>,
+      <Badge label={p.stage} color={
+        p.stage === "Live" ? "#059669" : p.stage === "Validated" ? "#2d6a4f" :
+        p.stage === "Designed" ? "#5c5edc" : p.stage === "Listed" ? "#d97706" : "#6b7280"
+      } />,
+      <span style={{ fontSize: 11, color: "#9ca3af" }}>{p.created_at ? new Date(p.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "—"}</span>,
+    ]
+  }));
+
+  // Recent activity
+  const activity = [
+    ...briefs.slice(0, 2).map(b => ({ icon: "📋", text: `Brief sent to Hayden — ${b.content?.split("
+")[0]?.replace("NICHE 1: ", "") || "Design brief"}`, time: b.created_at ? new Date(b.created_at).toLocaleDateString() : "Recently" })),
+    ...trends.slice(0, 2).map(t => ({ icon: "📊", text: `Trend report submitted by Sati`, time: t.created_at ? new Date(t.created_at).toLocaleDateString() : "Recently" })),
+    ...copies.slice(0, 2).map(c => ({ icon: "📝", text: `Listing copy generated for ${c.niche}`, time: c.created_at ? new Date(c.created_at).toLocaleDateString() : "Recently" })),
+  ].slice(0, 5);
+
+  if (!activity.length) {
+    activity.push({ icon: "🚀", text: "Send your first design brief to get started", time: "Now" });
+  }
+
+  const convRate = funnelStages[0].value > 0 ? Math.round((live / funnelStages[0].value) * 100) : 0;
+
+  return (
+    <div style={{ animation: "fadeUp 0.2s" }}>
+      {/* KPI Row */}
+      <div style={{ display: "flex", gap: 12, marginBottom: 20, flexWrap: "wrap" }}>
+        <KpiCard icon="📋" label="Briefs Sent" value={briefsThisWeek} delta={briefsThisWeek} deltaLabel="this week" color={accent.main} />
+        <KpiCard icon="🚀" label="Pipeline Items" value={pipeline.length} delta={pipeline.filter(p => p.created_at >= thisWeek).length} deltaLabel="new this week" color={accent.main} />
+        <KpiCard icon="✅" label="Live Designs" value={live} delta={uploads.filter(u => u.status === "Live" && u.created_at >= thisWeek).length} deltaLabel="this week" color="#059669" />
+        <KpiCard icon="💼" label="Active Clients" value={activeClients} sub={`${clients.length} total`} color={accent.main} />
+      </div>
+
+      {/* Main grid */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
+        {/* Research Funnel */}
+        <Card accent={accent} style={{ marginBottom: 0 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: "#374151" }}>Research Funnel</div>
+            <div style={{ fontSize: 11, color: "#9ca3af" }}>Conversion: <span style={{ fontWeight: 700, color: accent.main }}>{convRate}%</span></div>
+          </div>
+          <FunnelChart stages={funnelStages} accent={accent} />
+          {pipeline.length === 0 && <div style={{ fontSize: 11, color: "#9ca3af", marginTop: 8, fontStyle: "italic" }}>Add niches to your Pipeline to populate this funnel</div>}
+        </Card>
+
+        {/* Trending Niches */}
+        <Card accent={accent} style={{ marginBottom: 0 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: "#374151" }}>Trending Niches</div>
+            <button onClick={() => setActivePage("pipeline")} style={{ fontSize: 11, color: accent.main, fontWeight: 600, background: "none", border: "none", cursor: "pointer" }}>View all →</button>
+          </div>
+          <TrendingNiches pipeline={pipeline} accent={accent} />
+        </Card>
+      </div>
+
+      {/* My Ideas table */}
+      <Card accent={accent} style={{ marginBottom: 16 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: "#374151" }}>My Pipeline Ideas</div>
+          <button onClick={() => setActivePage("pipeline")} style={{ fontSize: 11, color: accent.main, fontWeight: 600, background: "none", border: "none", cursor: "pointer" }}>View all →</button>
+        </div>
+        <DataTable
+          columns={["Niche", "Design Angle", "Stage", "Added"]}
+          rows={ideaRows}
+          accent={accent}
+          emptyMsg="No niches yet — add your first idea to the Pipeline"
+        />
+      </Card>
+
+      {/* Bottom grid */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
+        {/* Recent Activity */}
+        <Card accent={accent} style={{ marginBottom: 0 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: "#374151", marginBottom: 14 }}>Recent Activity</div>
+          <ActivityFeed items={activity} accent={accent} />
+        </Card>
+
+        {/* Performance + Quick Links */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <Card accent={accent} style={{ marginBottom: 0 }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: "#374151", marginBottom: 12 }}>Performance</div>
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
+              <span style={{ fontSize: 12, color: "#6b7280" }}>Listings Approved %</span>
+              <span style={{ fontSize: 14, fontWeight: 800, color: accent.main }}>
+                {copies.length > 0 ? `${Math.round((copies.filter(c => c.status === "uploaded").length / copies.length) * 100)}%` : "—"}
+              </span>
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <span style={{ fontSize: 12, color: "#6b7280" }}>Pending Upload</span>
+              <span style={{ fontSize: 14, fontWeight: 800, color: pending > 0 ? "#d97706" : "#059669" }}>{pending}</span>
+            </div>
+          </Card>
+          <Card accent={accent} style={{ marginBottom: 0 }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: "#374151", marginBottom: 12 }}>Quick Actions</div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+              {[
+                { label: "Send Brief", icon: "📋", page: "brief" },
+                { label: "Validate Niche", icon: "🔍", page: "validate" },
+                { label: "Gen Listing", icon: "📝", page: "merch" },
+                { label: "View Pipeline", icon: "🚀", page: "pipeline" },
+              ].map(a => (
+                <button key={a.page} onClick={() => setActivePage(a.page)}
+                  style={{ background: accent.light, border: `1.5px solid ${accent.border}`, borderRadius: 9, padding: "10px 8px", cursor: "pointer", textAlign: "center", transition: "all 0.15s", fontFamily: "'DM Sans', sans-serif" }}
+                  onMouseEnter={e => e.currentTarget.style.background = accent.mid}
+                  onMouseLeave={e => e.currentTarget.style.background = accent.light}
+                >
+                  <div style={{ fontSize: 18, marginBottom: 4 }}>{a.icon}</div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: accent.text }}>{a.label}</div>
+                </button>
+              ))}
+            </div>
+          </Card>
+        </div>
+      </div>
+
+      <DetergentFund state={{ detergentFund: { amount: 0, goal: 5000 }, ...{} }} update={() => {}} editable={false} accent={accent} />
+    </div>
+  );
+};
+
+// ============================================================
+// SATI DASHBOARD OVERVIEW
+// ============================================================
+const OperationsOverview = ({ state, accent, setActivePage }) => {
+  const urgent = state.urgentTrends || [];
+  const reports = state.trendReports || [];
+  const copies = state.listingCopies || [];
+  const handoffs = state.designHandoffs || [];
+  const clients = state.clients || [];
+
+  const thisWeek = (() => { const d = new Date(); d.setDate(d.getDate() - d.getDay()); d.setHours(0,0,0,0); return d.toISOString(); })();
+  const trendsThisWeek = urgent.filter(t => t.created_at >= thisWeek).length;
+  const reportsThisWeek = reports.filter(r => r.created_at >= thisWeek).length;
+  const pendingUpload = copies.filter(c => c.status === "pending_upload").length;
+  const pendingRB = handoffs.filter(h => h.rb_status === "pending_rb_listings").length;
+  const activeClients = clients.filter(c => c.status !== "Paid").length;
+
+  // Pending uploads table
+  const uploadRows = copies.filter(c => c.status === "pending_upload").slice(0, 5).map(c => ({
+    cells: [
+      <span style={{ fontWeight: 600, color: "#111" }}>{c.niche}</span>,
+      <span style={{ color: "#6b7280", fontSize: 12 }}>{c.design_text || "—"}</span>,
+      <Badge label="PENDING UPLOAD" color={accent.main} />,
+      <span style={{ fontSize: 11, color: "#9ca3af" }}>{c.created_at ? new Date(c.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "—"}</span>,
+    ]
+  }));
+
+  // RB Handoffs pending
+  const rbRows = handoffs.filter(h => h.rb_status === "pending_rb_listings").slice(0, 5).map(h => ({
+    cells: [
+      <span style={{ fontWeight: 600, color: "#111" }}>{h.niche}</span>,
+      <Badge label="NEEDS RB LISTINGS" color="#d97706" />,
+      <span style={{ fontSize: 11, color: "#9ca3af" }}>{h.created_at ? new Date(h.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "—"}</span>,
+    ]
+  }));
+
+  // Recent urgent trends
+  const trendActivity = urgent.slice(0, 4).map(t => ({
+    icon: "🔥", text: `${t.platform}: ${t.description?.slice(0, 60) || "Trend captured"}${t.description?.length > 60 ? "…" : ""}`,
+    time: t.created_at ? new Date(t.created_at).toLocaleDateString() : "Recently"
+  }));
+  if (!trendActivity.length) trendActivity.push({ icon: "⚡", text: "Use Trend Capture to log what you spot on social media", time: "Now" });
+
+  return (
+    <div style={{ animation: "fadeUp 0.2s" }}>
+      {/* KPI Row */}
+      <div style={{ display: "flex", gap: 12, marginBottom: 20, flexWrap: "wrap" }}>
+        <KpiCard icon="🔥" label="Trends Captured" value={trendsThisWeek} delta={trendsThisWeek} deltaLabel="this week" color={accent.main} sub={`${urgent.length} total`} />
+        <KpiCard icon="📊" label="Reports Submitted" value={reportsThisWeek} delta={reportsThisWeek} deltaLabel="this week" color={accent.main} />
+        <KpiCard icon="⬆️" label="Pending Upload" value={pendingUpload} delta={null} color={pendingUpload > 0 ? "#d97706" : "#059669"} sub="Merch listings to upload" />
+        <KpiCard icon="🎨" label="RB Listings Needed" value={pendingRB} delta={null} color={pendingRB > 0 ? "#d97706" : "#059669"} sub="From Hayden's handoffs" />
+      </div>
+
+      {/* Quick action cards */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginBottom: 16 }}>
+        {[
+          { id: "capture", icon: "⚡", label: "Trend Capture", desc: "Log something you spotted", badge: null },
+          { id: "report", icon: "📊", label: "Weekly Report", desc: "Submit Sunday trend report", badge: reportsThisWeek > 0 ? "Done ✓" : null },
+          { id: "seasonal", icon: "📅", label: "Seasonal Watch", desc: "Monthly POD calendar", badge: null },
+        ].map(item => (
+          <button key={item.id} onClick={() => setActivePage(item.id)}
+            style={{ background: "#fff", border: `1.5px solid ${accent.border}`, borderRadius: 12, padding: "16px 14px", cursor: "pointer", textAlign: "left", transition: "all 0.15s", fontFamily: "'DM Sans', sans-serif', position: 'relative" }}
+            onMouseEnter={e => e.currentTarget.style.borderColor = accent.main}
+            onMouseLeave={e => e.currentTarget.style.borderColor = accent.border}
+          >
+            <div style={{ fontSize: 22, marginBottom: 8 }}>{item.icon}</div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: "#111" }}>{item.label}</div>
+            <div style={{ fontSize: 11, color: "#9ca3af", marginTop: 3 }}>{item.desc}</div>
+            {item.badge && <div style={{ marginTop: 6 }}><Badge label={item.badge} color="#059669" /></div>}
+          </button>
+        ))}
+      </div>
+
+      {/* Main content grid */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
+        {/* Pending Merch Uploads */}
+        <Card accent={accent} style={{ marginBottom: 0 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: "#374151" }}>Pending Merch Uploads</div>
+            <button onClick={() => setActivePage("merch")} style={{ fontSize: 11, color: accent.main, fontWeight: 600, background: "none", border: "none", cursor: "pointer" }}>View all →</button>
+          </div>
+          <DataTable
+            columns={["Niche", "Design", "Status", "Date"]}
+            rows={uploadRows}
+            accent={accent}
+            emptyMsg="All caught up — no pending uploads ✓"
+          />
+        </Card>
+
+        {/* RB Listings Needed */}
+        <Card accent={accent} style={{ marginBottom: 0 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: "#374151" }}>Redbubble Listings Needed</div>
+            <button onClick={() => setActivePage("rb")} style={{ fontSize: 11, color: accent.main, fontWeight: 600, background: "none", border: "none", cursor: "pointer" }}>Write listings →</button>
+          </div>
+          <DataTable
+            columns={["Niche", "Status", "Date"]}
+            rows={rbRows}
+            accent={accent}
+            emptyMsg="No pending Redbubble listings ✓"
+          />
+        </Card>
+      </div>
+
+      {/* Trends + Clients */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
+        <Card accent={accent} style={{ marginBottom: 0 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: "#374151" }}>Recent Trend Captures</div>
+            <button onClick={() => setActivePage("capture")} style={{ fontSize: 11, color: accent.main, fontWeight: 600, background: "none", border: "none", cursor: "pointer" }}>+ Capture →</button>
+          </div>
+          <ActivityFeed items={trendActivity} accent={accent} />
+        </Card>
+
+        <Card accent={accent} style={{ marginBottom: 0 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: "#374151" }}>Client Overview</div>
+            <button onClick={() => setActivePage("clients")} style={{ fontSize: 11, color: accent.main, fontWeight: 600, background: "none", border: "none", cursor: "pointer" }}>View all →</button>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 12 }}>
+            {[
+              { label: "Active", value: activeClients, color: accent.main },
+              { label: "Total", value: clients.length, color: "#6b7280" },
+              { label: "Paid", value: clients.filter(c => c.paid).length, color: "#059669" },
+              { label: "Awaiting Payment", value: clients.filter(c => !c.paid && c.status !== "New").length, color: "#d97706" },
+            ].map((s, i) => (
+              <div key={i} style={{ background: "#f9f7f4", borderRadius: 9, padding: "10px 12px" }}>
+                <div style={{ fontSize: 20, fontWeight: 800, color: s.color }}>{s.value}</div>
+                <div style={{ fontSize: 11, color: "#6b7280", marginTop: 2 }}>{s.label}</div>
+              </div>
+            ))}
+          </div>
+          {clients.length === 0 && <div style={{ fontSize: 12, color: "#9ca3af" }}>No clients yet — List Peak clients appear here when added</div>}
+        </Card>
+      </div>
+    </div>
+  );
+};
+
+// ============================================================
+// HAYDEN DASHBOARD OVERVIEW
+// ============================================================
+const DesignerOverview = ({ state, accent, setActivePage }) => {
+  const uploads = state.uploadLog || [];
+  const handoffs = state.designHandoffs || [];
+  const briefs = state.nicheBriefs || [];
+  const rejections = state.rejectionReports || [];
+
+  const thisWeek = (() => { const d = new Date(); d.setDate(d.getDate() - d.getDay()); d.setHours(0,0,0,0); return d.toISOString(); })();
+  const weekUploads = uploads.filter(u => u.created_at >= thisWeek).length;
+  const live = uploads.filter(u => u.status === "Live").length;
+  const inProgress = uploads.filter(u => u.status === "Pending Review").length;
+  const rejected = rejections.filter(r => r.status === "new").length;
+  const acceptRate = uploads.length > 0 ? Math.round(((uploads.length - rejections.length) / uploads.length) * 100) : 100;
+
+  // My Designs table
+  const designRows = uploads.slice(0, 8).map(u => ({
+    cells: [
+      <span style={{ fontWeight: 600, color: "#111" }}>{u.design}</span>,
+      <span style={{ fontSize: 12, color: "#6b7280" }}>{u.niche}</span>,
+      <Badge label={u.status} color={u.status === "Live" ? "#059669" : u.status === "Rejected" ? "#ef4444" : "#d97706"} />,
+      <span style={{ fontSize: 12, color: "#6b7280" }}>{u.platform}</span>,
+      <span style={{ fontSize: 11, color: "#9ca3af" }}>{u.created_at ? new Date(u.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "—"}</span>,
+    ]
+  }));
+
+  // Production board columns
+  const boardCols = [
+    { label: "In Progress", color: "#d97706", items: uploads.filter(u => u.status === "Pending Review") },
+    { label: "Approved", color: "#059669", items: uploads.filter(u => u.status === "Live") },
+    { label: "Rejected", color: "#ef4444", items: rejections },
+  ];
+
+  const road500weeks = live < 500 ? Math.ceil((500 - live) / 10) : 0;
+
+  return (
+    <div style={{ animation: "fadeUp 0.2s" }}>
+      {/* KPI Row */}
+      <div style={{ display: "flex", gap: 12, marginBottom: 20, flexWrap: "wrap" }}>
+        <KpiCard icon="🎨" label="This Week" value={weekUploads} delta={weekUploads - 10} deltaLabel="vs 10 target" color={accent.main} sub="Target: 10/week" />
+        <KpiCard icon="✅" label="Live Designs" value={live} delta={uploads.filter(u => u.status === "Live" && u.created_at >= thisWeek).length} deltaLabel="this week" color="#059669" />
+        <KpiCard icon="⏳" label="In Progress" value={inProgress} delta={null} color="#d97706" />
+        <KpiCard icon="⚠️" label="Rejections" value={rejected} delta={null} color={rejected > 0 ? "#ef4444" : "#059669"} sub={`${acceptRate}% acceptance rate`} />
+      </div>
+
+      {/* Road to 500 */}
+      <Card accent={accent} style={{ marginBottom: 16 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: "#374151" }}>Road to 500 Live Designs</div>
+          <div style={{ fontSize: 13, fontWeight: 800, color: accent.main }}>{live} / 500</div>
+        </div>
+        <div style={{ height: 10, background: "#f0ece6", borderRadius: 5, overflow: "hidden", marginBottom: 8 }}>
+          <div style={{ height: "100%", width: `${Math.min(100, (live / 500) * 100)}%`, background: `linear-gradient(90deg, ${accent.main}, ${accent.muted})`, borderRadius: 5, transition: "width 0.6s" }} />
+        </div>
+        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "#9ca3af" }}>
+          <span>{live < 500 ? `${500 - live} designs to go` : "🎉 Milestone reached!"}</span>
+          <span>{live < 500 ? `~${road500weeks} weeks at 10/week` : "Income inflection point"}</span>
+        </div>
+      </Card>
+
+      {/* Current brief + production board */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
+        {/* Current Brief */}
+        <Card accent={accent} style={{ marginBottom: 0 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: "#374151" }}>Current Brief from Dad</div>
+            <button onClick={() => setActivePage("brief")} style={{ fontSize: 11, color: accent.main, fontWeight: 600, background: "none", border: "none", cursor: "pointer" }}>Full brief →</button>
+          </div>
+          {briefs.length > 0 ? (
+            <div>
+              <Badge label="ACTIVE" color={accent.main} />
+              <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 11.5, color: "#374151", lineHeight: 1.7, whiteSpace: "pre-wrap", marginTop: 10, maxHeight: 160, overflowY: "auto" }}>
+                {briefs[0].content?.slice(0, 300)}{briefs[0].content?.length > 300 ? "…" : ""}
+              </div>
+              <div style={{ fontSize: 11, color: "#9ca3af", marginTop: 8 }}>{briefs[0].week}</div>
+            </div>
+          ) : (
+            <div style={{ color: "#9ca3af", fontSize: 13, padding: "12px 0" }}>No brief yet — Dad sends it every Monday. Check back then.</div>
+          )}
+        </Card>
+
+        {/* Production Board mini */}
+        <Card accent={accent} style={{ marginBottom: 0 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: "#374151", marginBottom: 12 }}>Production Board</div>
+          <div style={{ display: "flex", gap: 10 }}>
+            {boardCols.map((col, i) => (
+              <div key={i} style={{ flex: 1, background: "#f9f7f4", borderRadius: 9, padding: "10px 10px" }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: col.color, letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 8 }}>{col.label}</div>
+                <div style={{ fontSize: 24, fontWeight: 800, color: col.color }}>{col.items.length}</div>
+                <div style={{ fontSize: 10, color: "#9ca3af", marginTop: 2 }}>designs</div>
+              </div>
+            ))}
+          </div>
+          <div style={{ marginTop: 14, display: "flex", gap: 8 }}>
+            <button onClick={() => setActivePage("handoff")}
+              style={{ flex: 1, background: accent.light, border: `1.5px solid ${accent.border}`, color: accent.text, borderRadius: 8, padding: "8px", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>
+              Submit Handoff →
+            </button>
+            <button onClick={() => setActivePage("uploads")}
+              style={{ flex: 1, background: "#fff", border: "1.5px solid #e5e0d8", color: "#6b7280", borderRadius: 8, padding: "8px", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>
+              Log Upload →
+            </button>
+          </div>
+        </Card>
+      </div>
+
+      {/* My Designs table */}
+      <Card accent={accent} style={{ marginBottom: 16 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: "#374151" }}>My Designs</div>
+          <button onClick={() => setActivePage("uploads")} style={{ fontSize: 11, color: accent.main, fontWeight: 600, background: "none", border: "none", cursor: "pointer" }}>View all →</button>
+        </div>
+        <DataTable
+          columns={["Design", "Niche", "Status", "Platform", "Date"]}
+          rows={designRows}
+          accent={accent}
+          emptyMsg="No designs logged yet — use the Upload Log to track your work"
+        />
+      </Card>
+
+      {/* Design Tips + Quick Actions */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+        <Card accent={accent} style={{ marginBottom: 0 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: "#374151", marginBottom: 12 }}>Design Tips</div>
+          {[
+            "Always export at 4500 × 5400px PNG with transparent background",
+            "Never put white text on a white background — check contrast",
+            "Check Amazon Merch content guidelines before uploading",
+            "Log rejections immediately — Dad fixes them via the Rejection Fix tool",
+          ].map((tip, i) => (
+            <div key={i} style={{ display: "flex", gap: 8, padding: "7px 0", borderBottom: "1px solid #f0ece6", alignItems: "flex-start" }}>
+              <span style={{ color: accent.main, fontWeight: 700, flexShrink: 0, fontSize: 12 }}>→</span>
+              <span style={{ fontSize: 12, color: "#6b7280", lineHeight: 1.4 }}>{tip}</span>
+            </div>
+          ))}
+          <button onClick={() => setActivePage("brief")} style={{ marginTop: 12, fontSize: 11, color: accent.main, fontWeight: 600, background: "none", border: "none", cursor: "pointer", padding: 0 }}>
+            View full guidelines →
+          </button>
+        </Card>
+
+        <Card accent={accent} style={{ marginBottom: 0 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: "#374151", marginBottom: 12 }}>Quick Actions</div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+            {[
+              { label: "New Design", icon: "🎨", page: "generators" },
+              { label: "Upload Log", icon: "📤", page: "uploads" },
+              { label: "My Templates", icon: "📐", page: "generators" },
+              { label: "Submit Handoff", icon: "🤝", page: "handoff" },
+            ].map(a => (
+              <button key={a.label} onClick={() => setActivePage(a.page)}
+                style={{ background: accent.light, border: `1.5px solid ${accent.border}`, borderRadius: 9, padding: "12px 8px", cursor: "pointer", textAlign: "center", transition: "all 0.15s", fontFamily: "'DM Sans', sans-serif" }}
+                onMouseEnter={e => e.currentTarget.style.background = accent.mid}
+                onMouseLeave={e => e.currentTarget.style.background = accent.light}
+              >
+                <div style={{ fontSize: 20, marginBottom: 4 }}>{a.icon}</div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: accent.text }}>{a.label}</div>
+              </button>
+            ))}
+          </div>
+        </Card>
+      </div>
+    </div>
+  );
+};
+
+// ============================================================
+// SIDEBAR NAVIGATION COMPONENT
+// ============================================================
+const SIDEBAR_NAV = {
+  founder: [
+    { id: "dashboard",   label: "Dashboard",      icon: "⚡" },
+    { id: "brief",       label: "Design Brief",   icon: "📋" },
+    { id: "validate",    label: "Niche Validate",  icon: "🔍" },
+    { id: "pipeline",    label: "Pipeline",        icon: "🚀" },
+    { id: "merch",       label: "Merch Listing",   icon: "📝" },
+    { id: "rb",          label: "RB Listing",      icon: "🎨" },
+    { id: "rejection",   label: "Rejection Fix",   icon: "⚠️" },
+    { id: "clients",     label: "Client Pipeline", icon: "💼" },
+    { id: "performance", label: "Performance",     icon: "📊" },
+    { id: "checklist",   label: "Checklist",       icon: "✅" },
+  ],
+  operations: [
+    { id: "dashboard",   label: "Dashboard",       icon: "🔥" },
+    { id: "capture",     label: "Trend Capture",   icon: "⚡" },
+    { id: "report",      label: "Weekly Report",   icon: "📊" },
+    { id: "seasonal",    label: "Seasonal Watch",  icon: "📅" },
+    { id: "rb",          label: "RB Listings",     icon: "🎨" },
+    { id: "rbrewrite",   label: "RB Rewrite",      icon: "✏️" },
+    { id: "customer",    label: "Customer Reply",  icon: "💬" },
+    { id: "merch",       label: "Merch Upload",    icon: "⬆️" },
+    { id: "clients",     label: "Clients",         icon: "💼" },
+    { id: "checklist",   label: "Checklist",       icon: "✅" },
+  ],
+  designer: [
+    { id: "dashboard",   label: "Dashboard",       icon: "🎨" },
+    { id: "brief",       label: "Brief",           icon: "📋" },
+    { id: "tools",       label: "AI Tools",        icon: "🤖" },
+    { id: "generators",  label: "Generators",      icon: "⚙️" },
+    { id: "handoff",     label: "Handoff",         icon: "🤝" },
+    { id: "uploads",     label: "Upload Log",      icon: "📤" },
+    { id: "checklist",   label: "Checklist",       icon: "✅" },
+  ],
+};
+
+const Sidebar = ({ role, activePage, setActivePage, user, accent, notifications, onClear, onSignOut }) => {
+  const nav = SIDEBAR_NAV[role] || [];
+  const unread = notifications.length;
+
+  return (
+    <div style={{
+      width: 220,
+      minHeight: "100vh",
+      background: accent.sidebar,
+      borderRight: `1px solid ${accent.sidebarBorder}`,
+      display: "flex",
+      flexDirection: "column",
+      flexShrink: 0,
+      position: "sticky",
+      top: 0,
+      height: "100vh",
+      overflowY: "auto",
+    }}>
+      {/* Logo / Brand */}
+      <div style={{ padding: "20px 18px 16px", borderBottom: `1px solid ${accent.sidebarBorder}` }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <div style={{ width: 32, height: 32, background: accent.sidebarActive, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, flexShrink: 0 }}>
+            🖨️
+          </div>
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 800, color: "#fff", letterSpacing: "-0.3px" }}>POD Studio</div>
+            <div style={{ fontSize: 10, color: accent.sidebarMuted, fontWeight: 500, marginTop: 1 }}>OS v2</div>
+          </div>
+        </div>
+      </div>
+
+      {/* User pill */}
+      <div style={{ padding: "12px 14px", borderBottom: `1px solid ${accent.sidebarBorder}` }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
+          <div style={{ width: 30, height: 30, borderRadius: "50%", background: accent.sidebarActive + "40", border: `1.5px solid ${accent.sidebarActive}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, flexShrink: 0 }}>
+            {role === "founder" ? "⚡" : role === "operations" ? "🔥" : "✏️"}
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 12.5, fontWeight: 700, color: "#fff", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{user.name}</div>
+            <div style={{ fontSize: 10, color: accent.sidebarMuted, fontWeight: 500 }}>{accent.label}</div>
+          </div>
+          {unread > 0 && (
+            <div style={{ background: accent.sidebarActive, color: "#fff", borderRadius: "50%", width: 18, height: 18, fontSize: 9, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              {unread}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Nav items */}
+      <nav style={{ flex: 1, padding: "10px 10px" }}>
+        {nav.map(item => {
+          const isActive = activePage === item.id;
+          return (
+            <button
+              key={item.id}
+              onClick={() => setActivePage(item.id)}
+              style={{
+                width: "100%",
+                display: "flex",
+                alignItems: "center",
+                gap: 9,
+                padding: "9px 10px",
+                marginBottom: 2,
+                background: isActive ? accent.sidebarActive + "25" : "transparent",
+                border: "none",
+                borderRadius: 8,
+                cursor: "pointer",
+                textAlign: "left",
+                transition: "all 0.15s",
+                borderLeft: isActive ? `3px solid ${accent.sidebarActive}` : "3px solid transparent",
+              }}
+              onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = accent.sidebarHover; }}
+              onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = "transparent"; }}
+            >
+              <span style={{ fontSize: 14, flexShrink: 0, opacity: isActive ? 1 : 0.7 }}>{item.icon}</span>
+              <span style={{
+                fontSize: 12.5,
+                fontWeight: isActive ? 700 : 500,
+                color: isActive ? "#fff" : accent.sidebarText,
+                letterSpacing: "0.01em",
+                whiteSpace: "nowrap",
+              }}>
+                {item.label}
+              </span>
+              {item.id === "dashboard" && unread > 0 && (
+                <span style={{ marginLeft: "auto", background: accent.sidebarActive, color: "#fff", borderRadius: 10, padding: "1px 6px", fontSize: 9, fontWeight: 800 }}>{unread}</span>
+              )}
+            </button>
+          );
+        })}
+      </nav>
+
+      {/* Bottom actions */}
+      <div style={{ padding: "12px 10px", borderTop: `1px solid ${accent.sidebarBorder}` }}>
+        {role === "founder" && (
+          <div style={{ marginBottom: 8 }}>
+            <ModelSelector sidebarMode={true} accent={accent} />
+          </div>
+        )}
+        <button
+          onClick={onSignOut}
+          style={{
+            width: "100%", display: "flex", alignItems: "center", gap: 8,
+            padding: "8px 10px", background: "transparent", border: `1px solid ${accent.sidebarBorder}`,
+            borderRadius: 8, cursor: "pointer", color: accent.sidebarMuted, fontSize: 12, fontWeight: 600,
+            fontFamily: "'DM Sans', sans-serif", transition: "all 0.15s",
+          }}
+          onMouseEnter={e => { e.currentTarget.style.borderColor = accent.sidebarActive; e.currentTarget.style.color = "#fff"; }}
+          onMouseLeave={e => { e.currentTarget.style.borderColor = accent.sidebarBorder; e.currentTarget.style.color = accent.sidebarMuted; }}
+        >
+          <span style={{ fontSize: 13 }}>→</span>
+          Sign out
+        </button>
+      </div>
+    </div>
+  );
+};
+
 // ============================================================
 // LOGIN SCREEN — Supabase Auth
 // ============================================================
@@ -2330,64 +3138,118 @@ export default function App() {
     }
   };
 
+  const [activePage, setActivePage] = useState("dashboard");
+
+  // Page title mapping
+  const pageTitle = {
+    dashboard: `${greeting}, ${user.name}! 👋`,
+    brief: "Design Brief",
+    validate: "Niche Validate",
+    pipeline: "Opportunity Pipeline",
+    merch: "Merch Listing",
+    rb: user.role === "operations" ? "Redbubble Listings" : "RB Listing",
+    rbrewrite: "Listing Rewrite",
+    customer: "Customer Reply",
+    rejection: "Rejection Fix",
+    clients: "Client Pipeline",
+    performance: "Performance",
+    checklist: "Checklist",
+    capture: "Trend Capture",
+    report: "Weekly Report",
+    seasonal: "Seasonal Watch",
+    tools: "AI Tools",
+    generators: "Design Generators",
+    handoff: "Design Handoff",
+    uploads: "Upload Log",
+  };
+
+  const pageSubtitle = {
+    dashboard: new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" }),
+    brief: "Compose and send the weekly niche brief to Hayden",
+    validate: "Validate demand, competition and design angles before briefing",
+    pipeline: "Track every niche from capture to first sale",
+    merch: "Generate Amazon Merch listing copy for Sati to upload",
+    rb: user.role === "operations" ? "Write complete Redbubble listings for Hayden's designs" : "Generate Redbubble listing copy",
+    rbrewrite: "Rewrite dead listings — use after 3 weeks with zero views",
+    customer: "Draft warm replies to Redbubble customer messages",
+    rejection: "Diagnose Amazon rejections and write compliant fixes",
+    clients: "List Peak client CRM — pipeline, emails, status",
+    performance: "Log weekly numbers and get performance analysis",
+    checklist: "Your weekly production checklist",
+    capture: "Capture social media trends for instant viability check",
+    report: "Build and submit the weekly trend report to Sheldon",
+    seasonal: "Monthly seasonal POD calendar — runs once, cached automatically",
+    tools: "Midjourney prompts and Kittl text concepts",
+    generators: "Standalone bulk design tools — open in new tab",
+    handoff: "Submit completed designs to Mum and Dad",
+    uploads: "Log and track every design upload",
+  };
+
   return (
-    <div style={{ minHeight: "100vh", background: "#f4f0eb", fontFamily: "'DM Sans', sans-serif" }}>
+    <div style={{ display: "flex", height: "100vh", overflow: "hidden", fontFamily: "'DM Sans', sans-serif" }}>
       <GlobalStyles accentMain={accent.main} />
 
-      {/* ── HEADER ── */}
-      <div style={{ background: "#fff", borderBottom: "1.5px solid #e5e0d8", padding: "0 24px", display: "flex", justifyContent: "space-between", alignItems: "center", position: "sticky", top: 0, zIndex: 100, height: 58 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <div style={{ width: 34, height: 34, background: accent.light, border: `1.5px solid ${accent.border}`, borderRadius: 9, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>
-            🖨️
-          </div>
-          <div>
-            <div style={{ fontSize: 14, fontWeight: 700, color: "#111", letterSpacing: "-0.2px" }}>POD Studio OS</div>
-            <div style={{ fontSize: 11, color: "#9ca3af", fontWeight: 500 }}>{user.name} · {roleLabel[user.role]}</div>
-          </div>
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          {user.role === "founder" && <ModelSelector />}
-          <NotifBell notifications={notifications} onClear={(id) => clearNotification(id)} accent={accent} />
-          <button
-            onClick={handleSignOut}
-            style={{ background: "#f9f7f4", border: "1.5px solid #e5e0d8", color: "#6b7280", borderRadius: 8, padding: "6px 14px", fontSize: 12.5, cursor: "pointer", fontWeight: 600 }}
-          >
-            Sign out
-          </button>
-        </div>
-      </div>
+      {/* ── DARK SIDEBAR ── */}
+      <Sidebar
+        role={user.role}
+        activePage={activePage}
+        setActivePage={setActivePage}
+        user={user}
+        accent={accent}
+        notifications={notifications}
+        onClear={clearNotification}
+        onSignOut={handleSignOut}
+      />
 
-      {/* ── BODY ── */}
-      <div style={{ maxWidth: 880, margin: "0 auto", padding: "28px 24px" }}>
+      {/* ── MAIN CONTENT AREA ── */}
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", background: "#f4f0eb" }}>
 
-        {/* Welcome banner */}
-        <div style={{ background: "#fff", border: `1.5px solid ${accent.border}`, borderRadius: 14, padding: "18px 22px", marginBottom: 24, display: "flex", justifyContent: "space-between", alignItems: "center", borderLeft: `4px solid ${accent.main}` }}>
+        {/* Content top bar */}
+        <div style={{ background: "#fff", borderBottom: "1.5px solid #e5e0d8", padding: "0 28px", height: 56, display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
           <div>
-            <div style={{ fontSize: 19, fontWeight: 700, color: "#111", letterSpacing: "-0.3px" }}>{greeting}, {user.name}.</div>
-            <div style={{ fontSize: 13, color: "#9ca3af", marginTop: 3 }}>
-              {roleLabel[user.role]} · {new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
+            <div style={{ fontSize: 15, fontWeight: 700, color: "#111", letterSpacing: "-0.2px" }}>
+              {pageTitle[activePage] || "Dashboard"}
+            </div>
+            <div style={{ fontSize: 11, color: "#9ca3af", marginTop: 1 }}>
+              {pageSubtitle[activePage] || ""}
             </div>
           </div>
-          <div style={{ fontSize: 10.5, color: accent.muted, fontWeight: 700, letterSpacing: "0.1em", textAlign: "right", lineHeight: 2 }}>
-            {roleSubtitle[user.role].split(" · ").map((s, i) => (
-              <div key={i}>{s}</div>
-            ))}
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <NotifBell notifications={notifications} onClear={(id) => clearNotification(id)} accent={accent} />
           </div>
         </div>
 
-        {/* Weekly Scoreboard — shown to all roles */}
-        <WeeklyScoreboard state={state} role={user.role} accent={accent} />
+        {/* Scrollable content */}
+        <div className="content-scroll" style={{ flex: 1, overflowY: "auto", padding: "24px 28px" }}>
 
-        {/* Dashboard content */}
-        {user.role === ROLES.FOUNDER && (
-          <FounderDashboard state={state} update={dbUpdate} addNotification={addNotification} clearNotification={clearNotification} />
-        )}
-        {user.role === ROLES.OPERATIONS && (
-          <OperationsDashboard state={state} update={dbUpdate} addNotification={addNotification} clearNotification={clearNotification} />
-        )}
-        {user.role === ROLES.DESIGNER && (
-          <DesignerDashboard state={state} update={dbUpdate} addNotification={addNotification} clearNotification={clearNotification} />
-        )}
+          {/* Dashboard page — full role-specific visual overview */}
+          {activePage === "dashboard" && user.role === ROLES.FOUNDER && (
+            <FounderOverview state={state} accent={accent} setActivePage={setActivePage} />
+          )}
+          {activePage === "dashboard" && user.role === ROLES.OPERATIONS && (
+            <OperationsOverview state={state} accent={accent} setActivePage={setActivePage} />
+          )}
+          {activePage === "dashboard" && user.role === ROLES.DESIGNER && (
+            <DesignerOverview state={state} accent={accent} setActivePage={setActivePage} />
+          )}
+
+          {/* Role dashboards — pass activePage so they render correct section */}
+          {activePage !== "dashboard" && user.role === ROLES.FOUNDER && (
+            <div style={{ animation: "fadeUp 0.2s" }}>
+              <FounderDashboard state={state} update={dbUpdate} addNotification={addNotification} clearNotification={clearNotification} activePage={activePage} />
+            </div>
+          )}
+          {activePage !== "dashboard" && user.role === ROLES.OPERATIONS && (
+            <div style={{ animation: "fadeUp 0.2s" }}>
+              <OperationsDashboard state={state} update={dbUpdate} addNotification={addNotification} clearNotification={clearNotification} activePage={activePage} />
+            </div>
+          )}
+          {activePage !== "dashboard" && user.role === ROLES.DESIGNER && (
+            <div style={{ animation: "fadeUp 0.2s" }}>
+              <DesignerDashboard state={state} update={dbUpdate} addNotification={addNotification} clearNotification={clearNotification} activePage={activePage} />
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
