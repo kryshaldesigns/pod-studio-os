@@ -2307,7 +2307,7 @@ const TrendingNiches = ({ pipeline, accent }) => {
 // ============================================================
 // SHELDON DASHBOARD OVERVIEW
 // ============================================================
-const FounderOverview = ({ state, accent, setActivePage }) => {
+const FounderOverview = ({ state, update, accent, setActivePage }) => {
   const pipeline = state.pipeline || [];
   const uploads = state.uploadLog || [];
   const briefs = state.nicheBriefs || [];
@@ -2449,7 +2449,7 @@ const FounderOverview = ({ state, accent, setActivePage }) => {
         </div>
       </div>
 
-      <DetergentFund state={{ detergentFund: { amount: 0, goal: 5000 }, ...{} }} update={() => {}} editable={false} accent={accent} />
+      <DetergentFund state={state} update={update} editable={true} accent={accent} />
     </div>
   );
 };
@@ -2515,7 +2515,7 @@ const OperationsOverview = ({ state, accent, setActivePage }) => {
           { id: "seasonal", icon: "📅", label: "Seasonal Watch", desc: "Monthly POD calendar", badge: null },
         ].map(item => (
           <button key={item.id} onClick={() => setActivePage(item.id)}
-            style={{ background: "#fff", border: `1.5px solid ${accent.border}`, borderRadius: 12, padding: "16px 14px", cursor: "pointer", textAlign: "left", transition: "all 0.15s", fontFamily: "'DM Sans', sans-serif', position: 'relative" }}
+            style={{ background: "#fff", border: `1.5px solid ${accent.border}`, borderRadius: 12, padding: "16px 14px", cursor: "pointer", textAlign: "left", transition: "all 0.15s", fontFamily: "'DM Sans', sans-serif" }}
             onMouseEnter={e => e.currentTarget.style.borderColor = accent.main}
             onMouseLeave={e => e.currentTarget.style.borderColor = accent.border}
           >
@@ -3223,7 +3223,7 @@ export default function App() {
 
           {/* Dashboard page — full role-specific visual overview */}
           {activePage === "dashboard" && user.role === ROLES.FOUNDER && (
-            <FounderOverview state={state} accent={accent} setActivePage={setActivePage} />
+            <FounderOverview state={state} update={dbUpdate} accent={accent} setActivePage={setActivePage} />
           )}
           {activePage === "dashboard" && user.role === ROLES.OPERATIONS && (
             <OperationsOverview state={state} accent={accent} setActivePage={setActivePage} />
