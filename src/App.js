@@ -73,6 +73,7 @@ const useSharedState = (userRole) => {
     rejectionReports: [],
     clients: [],
     pipeline: [],
+    seasonalGuides: [],
     notifications: [],
     loaded: false,
   });
@@ -91,6 +92,7 @@ const useSharedState = (userRole) => {
         { data: rejections },
         { data: clients },
         { data: pipelineData },
+        { data: seasonalGuidesData },
         { data: notifs },
       ] = await Promise.all([
         supabase.from("detergent_fund").select("*").single(),
@@ -103,6 +105,7 @@ const useSharedState = (userRole) => {
         supabase.from("rejection_reports").select("*").order("created_at", { ascending: false }).limit(20),
         supabase.from("clients").select("*").order("created_at", { ascending: false }),
         supabase.from("pipeline").select("*").order("created_at", { ascending: false }).limit(100),
+        supabase.from("seasonal_guides").select("*").order("created_at", { ascending: false }).limit(12),
         supabase.from("notifications").select("*").eq("for_role", userRole).eq("read", false).order("created_at", { ascending: false }).limit(20),
       ]);
       setState({
@@ -116,6 +119,7 @@ const useSharedState = (userRole) => {
         rejectionReports: rejections || [],
         clients: clients || [],
         pipeline: pipelineData || [],
+        seasonalGuides: seasonalGuidesData || [],
         notifications: notifs || [],
         loaded: true,
       });
@@ -1052,24 +1056,15 @@ const OperationsDashboard = ({ state, update, addNotification }) => {
           </div>
 
           <div style={{ marginTop: 24 }}>
-            {/* RESEARCH-03 */}
-            <SectionTitle accent={accent}>Monthly Seasonal Watch — RESEARCH-03</SectionTitle>
-            <Alert accent={accent}>Run at the start of each month only. Gets the upcoming seasonal POD calendar for Sheldon to plan briefs.</Alert>
-            <Select label="Current month" value={month} onChange={setMonth}
-              options={["January","February","March","April","May","June","July","August","September","October","November","December"]} />
-            <div style={{ marginTop: 10 }}>
-              <Btn accent={accent} disabled={loading03} onClick={() => run03(`You are a seasonal POD trend strategist. The current month is ${month} ${new Date().getFullYear()}.\n\nProvide a seasonal planning guide for print-on-demand sellers on Amazon Merch and Redbubble.\n\n1. TOP OCCASIONS THIS MONTH — list every gifting occasion and holiday in the next 6 weeks with exact dates\n2. DESIGN THEMES TO BRIEF NOW — what should designers be creating this week to be live in time?\n3. NICHES PEAKING THIS MONTH — which buyer groups are most active right now?\n4. NEXT MONTH PREVIEW — what to start preparing for\n5. ONE QUICK WIN — single niche + design angle you could launch within 7 days\n\nBe specific with dates and design directions. Do not include any outdated year references.`)}>
-                {loading03 ? "Generating…" : "Get Monthly Seasonal Guide (RESEARCH-03)"}
-              </Btn>
-            </div>
-            {loading03 && <Spinner accent={accent} />}
-            <OutputBox content={output03} accent={accent} />
-            {output03 && (
-              <Btn accent={accent} small secondary style={{ marginTop: 10 }} onClick={() => {
-                addNotification("founder", `📅 Monthly seasonal guide for ${month} is ready — check Sati's Research tab.`);
-                alert("Sheldon notified ✓");
-              }}>Notify Sheldon →</Btn>
-            )}
+            {/* RESEARCH-03 — with Supabase caching */}
+            <ResearchO3
+              state={state}
+              update={update}
+              addNotification={addNotification}
+              accent={accent}
+              month={month}
+              setMonth={setMonth}
+            />
           </div>
         </div>
       )}
@@ -1988,6 +1983,135 @@ const HaydenStats = ({ state, accent }) => {
   );
 };
 
+
+// ============================================================
+// RESEARCH-03 — Monthly Seasonal Watch with Supabase caching
+// ============================================================
+const ResearchO3 = ({ state, update, addNotification, accent, month, setMonth }) => {
+  const [loading, setLoading] = useState(false);
+  const [output, setOutput] = useState("");
+  const [forceRegen, setForceRegen] = useState(false);
+
+  const currentYear = new Date().getFullYear();
+
+  // Find cached guide for selected month + year
+  const cached = (state.seasonalGuides || []).find(
+    g => g.month === month && g.year === currentYear
+  );
+
+  // On mount or month change — load cached output into display
+  useEffect(() => {
+    if (cached && !forceRegen) {
+      setOutput(cached.content);
+    } else if (!cached) {
+      setOutput("");
+    }
+  }, [month, cached, forceRegen]);
+
+  const generate = async () => {
+    setLoading(true);
+    setOutput("");
+    const prompt = `You are a seasonal POD trend strategist. The current month is ${month} ${currentYear}.
+
+Provide a seasonal planning guide for print-on-demand sellers on Amazon Merch and Redbubble.
+
+1. TOP OCCASIONS THIS MONTH — list every gifting occasion and holiday in the next 6 weeks with exact dates
+2. DESIGN THEMES TO BRIEF NOW — what should designers be creating this week to be live in time?
+3. NICHES PEAKING THIS MONTH — which buyer groups are most active right now?
+4. NEXT MONTH PREVIEW — what to start preparing for
+5. ONE QUICK WIN — single niche + design angle you could launch within 7 days
+
+Be specific with dates. The year is ${currentYear}. Do not reference any prior years.`;
+
+    let result = "";
+    await callClaude(prompt, (text) => { result = text; setOutput(text); });
+
+    // Save to Supabase — upsert by month+year
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        // Delete existing for this month/year first, then insert fresh
+        await supabase.from("seasonal_guides")
+          .delete()
+          .eq("month", month)
+          .eq("year", currentYear);
+        await supabase.from("seasonal_guides").insert({
+          month,
+          year: currentYear,
+          content: result,
+          created_by: session.user.id,
+        });
+      }
+    } catch (e) {
+      console.error("Failed to cache seasonal guide:", e);
+    }
+
+    setForceRegen(false);
+    setLoading(false);
+    addNotification("founder", `📅 Monthly seasonal guide for ${month} ${currentYear} is ready — check Sati's Research tab.`);
+  };
+
+  const isCached = !!cached && !forceRegen;
+
+  return (
+    <div>
+      <SectionTitle accent={accent}>Monthly Seasonal Watch — RESEARCH-03</SectionTitle>
+      <Alert accent={accent}>
+        Run once at the start of each month. The guide is saved and reloaded automatically — no repeat API calls needed.
+      </Alert>
+
+      <Select label="Month" value={month} onChange={(v) => { setMonth(v); setForceRegen(false); setOutput(""); }}
+        options={["January","February","March","April","May","June","July","August","September","October","November","December"]} />
+
+      {/* Status indicator */}
+      {isCached && (
+        <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "10px 0", padding: "8px 12px", background: "#f0fdf4", border: "1.5px solid #86efac", borderRadius: 9 }}>
+          <span style={{ fontSize: 14 }}>✅</span>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: "#166534" }}>Cached guide loaded</div>
+            <div style={{ fontSize: 11, color: "#6b7280" }}>
+              Saved {new Date(cached.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })} · No API call needed
+            </div>
+          </div>
+          <button
+            onClick={() => { setForceRegen(true); setOutput(""); }}
+            style={{ background: "#fff", border: "1.5px solid #d1d5db", borderRadius: 7, padding: "4px 10px", fontSize: 11, fontWeight: 600, cursor: "pointer", color: "#6b7280" }}
+          >
+            Regenerate
+          </button>
+        </div>
+      )}
+
+      {/* Generate button — only show if no cache or force regen */}
+      {(!isCached) && (
+        <div style={{ marginTop: 10 }}>
+          <Btn accent={accent} disabled={loading} onClick={generate}>
+            {loading ? "Generating…" : `Get ${month} ${currentYear} Seasonal Guide (RESEARCH-03)`}
+          </Btn>
+        </div>
+      )}
+
+      {loading && <Spinner accent={accent} />}
+
+      {output && (
+        <div>
+          <OutputBox content={output} accent={accent} />
+          {!loading && (
+            <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
+              {!isCached && (
+                <Btn accent={accent} small secondary onClick={() => {
+                  addNotification("founder", `📅 Monthly seasonal guide for ${month} ${currentYear} is ready — check Sati's Research tab.`);
+                  alert("Sheldon notified ✓");
+                }}>Notify Sheldon →</Btn>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
 // ============================================================
 // LOGIN SCREEN — Supabase Auth
 // ============================================================
@@ -2172,6 +2296,7 @@ export default function App() {
       rejectionReports: { table: "rejection_reports", op: "insert" },
       clients:          { table: "clients",           op: "insert" },
       pipeline:         { table: "pipeline",          op: "insert" },
+      seasonalGuides:   { table: "seasonal_guides",   op: "insert" },
     };
 
     // Special case: detergentFund is an upsert to single row
