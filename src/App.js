@@ -165,7 +165,7 @@ const useSharedState = (userRole) => {
 const AI_MODELS = {
   gemini: {
     id: "gemini",
-    label: "Gemini 2.0 Flash",
+    label: "Gemini 2.5 Flash-Lite",
     provider: "Google",
     icon: "✦",
     color: "#1a73e8",
@@ -202,7 +202,7 @@ const callClaude = async (prompt, onChunk) => {
       if (!key) { text = "Gemini API key not set — add REACT_APP_GEMINI_KEY to Vercel environment variables."; }
       else {
         const res = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${key}`,
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${key}`,
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
