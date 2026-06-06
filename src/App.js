@@ -320,7 +320,7 @@ const GlobalStyles = ({ accentMain }) => (
 const Spinner = ({ accent }) => (
   <div style={{ display: "flex", alignItems: "center", gap: 10, color: accent?.muted || "#888", fontSize: 13, padding: "8px 0", animation: "fadeUp 0.2s" }}>
     <div style={{ width: 16, height: 16, border: `2px solid ${accent?.mid || "#ddd"}`, borderTopColor: accent?.main || "#333", borderRadius: "50%", animation: "spin 0.7s linear infinite", flexShrink: 0 }} />
-    Claude is thinking…
+    Thinking…
   </div>
 );
 
@@ -742,7 +742,7 @@ const FounderDashboard = ({ state, update, addNotification }) => {
       {activeTab === "rejection" && (
         <div>
           <SectionTitle accent={accent}>Rejection Fix Tool</SectionTitle>
-          <Alert accent={accent}>Paste the rejection message from Amazon Merch. Claude identifies the violation and writes a clean fix plan.</Alert>
+          <Alert accent={accent}>Paste the rejection message from Amazon Merch. AI identifies the violation and writes a clean fix plan.</Alert>
           <Field label="Amazon rejection message" value={rejMsg} onChange={setRejMsg} multiline placeholder="Paste the full rejection message here…" />
           <Field label="Your design description" value={rejDesc} onChange={setRejDesc} placeholder="e.g. 'Reel Life — Born to Fish' fishing niche text design" />
           <Btn accent={accent} disabled={loading || !rejMsg} onClick={() => run(`An Amazon Merch on Demand design was rejected. Analyse the rejection and provide a fix plan.\n\nRejection message:\n${rejMsg}\n\nDesign description: ${rejDesc}\n\n1. VIOLATION TYPE — what policy was triggered\n2. EXACT PROBLEM — what specific element caused the rejection\n3. FIX — specific rewrite or change to make it compliant\n4. REVISED COPY — ready-to-use compliant version of any text\n5. PREVENTION — one rule to remember going forward`)}>
@@ -845,7 +845,7 @@ const FounderDashboard = ({ state, update, addNotification }) => {
       {activeTab === "performance" && (
         <div>
           <SectionTitle accent={accent}>Weekly Performance Log</SectionTitle>
-          <Alert accent={accent}>Log weekly numbers for both platforms. Claude analyses trends and flags what to action.</Alert>
+          <Alert accent={accent}>Log weekly numbers for both platforms. analyses trends and flags what to action.</Alert>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 13 }}>
             <Field label="Merch impressions" value={perfWeek.impressions} onChange={v => setPerfWeek(p => ({ ...p, impressions: v }))} placeholder="e.g. 1200" />
             <Field label="Merch clicks" value={perfWeek.clicks} onChange={v => setPerfWeek(p => ({ ...p, clicks: v }))} placeholder="e.g. 48" />
@@ -895,6 +895,15 @@ const FounderDashboard = ({ state, update, addNotification }) => {
 const OperationsDashboard = ({ state, update, addNotification }) => {
   const accent = ACCENT.operations;
   const [activeTab, setActiveTab] = useState("research");
+  // Per-section loading + output state — prevents cross-contamination
+  const [loading01, setLoading01] = useState(false);
+  const [output01, setOutput01] = useState("");
+  const [loading02, setLoading02] = useState(false);
+  const [output02, setOutput02] = useState("");
+  const [loading03, setLoading03] = useState(false);
+  const [output03, setOutput03] = useState("");
+  const [loadingPod, setLoadingPod] = useState(false);
+  const [outputPod, setOutputPod] = useState("");
   const [loading, setLoading] = useState(false);
   const [output, setOutput] = useState("");
 
@@ -935,6 +944,10 @@ const OperationsDashboard = ({ state, update, addNotification }) => {
   const [emailType, setEmailType] = useState("acknowledge");
 
   const run = async (prompt) => { setLoading(true); setOutput(""); await callClaude(prompt, setOutput); setLoading(false); };
+  const run01 = async (prompt) => { setLoading01(true); setOutput01(""); await callClaude(prompt, setOutput01); setLoading01(false); };
+  const run02 = async (prompt) => { setLoading02(true); setOutput02(""); await callClaude(prompt, setOutput02); setLoading02(false); };
+  const run03 = async (prompt) => { setLoading03(true); setOutput03(""); await callClaude(prompt, setOutput03); setLoading03(false); };
+  const runPod = async (prompt) => { setLoadingPod(true); setOutputPod(""); await callClaude(prompt, setOutputPod); setLoadingPod(false); };
 
   const EMAIL_PROMPTS = {
     acknowledge: (c) => `Write a warm, professional email acknowledging a new List Peak enquiry from ${c.name} who wants "${c.service}" for the "${c.niche}" niche. Confirm receipt, explain next step is their brief review, report takes 5–7 working days. Sign off as the List Peak team. Under 120 words.`,
@@ -964,7 +977,7 @@ const OperationsDashboard = ({ state, update, addNotification }) => {
           {/* RESEARCH-01 */}
           <SectionTitle accent={accent}>Quick Trend Capture — RESEARCH-01</SectionTitle>
           <Alert accent={accent}>
-            Spotted something while browsing? Capture it here instantly. Claude gives a rapid verdict and you can flag it straight to Sheldon.
+            Spotted something while browsing? Capture it here instantly. get a rapid verdict and you can flag it straight to Sheldon.
           </Alert>
           <Select label="Platform" value={captPlatform} onChange={setCaptPlatform}
             options={["TikTok", "Instagram", "Pinterest", "Facebook", "YouTube", "Twitter / X", "Other"]} />
@@ -973,8 +986,8 @@ const OperationsDashboard = ({ state, update, addNotification }) => {
               multiline placeholder="e.g. Funny fishing dad shirt getting thousands of likes on TikTok — text says 'Fish Fear Me, People Tolerate Me'" />
           </div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <Btn accent={accent} disabled={loading || !captDesc} onClick={() => run(`You are a print-on-demand trend analyst. A social media trend has been spotted.\n\nPlatform: ${captPlatform}\nDescription: ${captDesc}\n\nAssess quickly:\n1. Is this a real POD opportunity?\n2. Would it translate to T-shirts, mugs, and other print products?\n3. Is the audience likely to buy merch?\n4. How long before this saturates Amazon (days / weeks / months)?\n5. VERDICT: ESCALATE NOW / ADD TO SUNDAY REPORT / SKIP\n\nKeep response under 150 words — this is a rapid check, not a full analysis.`)}>
-              {loading ? "Checking…" : "Quick Viability Check (RESEARCH-01)"}
+            <Btn accent={accent} disabled={loading01 || !captDesc} onClick={() => run01(`You are a print-on-demand trend analyst. A social media trend has been spotted.\n\nPlatform: ${captPlatform}\nDescription: ${captDesc}\n\nAssess quickly:\n1. Is this a real POD opportunity?\n2. Would it translate to T-shirts, mugs, and other print products?\n3. Is the audience likely to buy merch?\n4. How long before this saturates Amazon (days / weeks / months)?\n5. VERDICT: ESCALATE NOW / ADD TO SUNDAY REPORT / SKIP\n\nKeep response under 150 words — this is a rapid check, not a full analysis.`)}>
+              {loading01 ? "Checking…" : "Quick Viability Check (RESEARCH-01)"}
             </Btn>
             <Btn accent={accent} secondary small disabled={!captDesc} onClick={() => {
               update("urgentTrends", [{ id: Date.now(), platform: captPlatform, desc: captDesc, date: new Date().toDateString() }, ...state.urgentTrends]);
@@ -985,8 +998,8 @@ const OperationsDashboard = ({ state, update, addNotification }) => {
               Flag Urgent to Sheldon →
             </Btn>
           </div>
-          {loading && <Spinner accent={accent} />}
-          <OutputBox content={output} accent={accent} />
+          {loading01 && <Spinner accent={accent} />}
+          <OutputBox content={output01} accent={accent} />
 
           {/* Urgent trends inbox */}
           {state.urgentTrends.length > 0 && (
@@ -1020,19 +1033,19 @@ const OperationsDashboard = ({ state, update, addNotification }) => {
               />
             ))}
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              <Btn accent={accent} disabled={loading || !findings.filter(Boolean).length}
-                onClick={() => run(`You are a print-on-demand trend researcher. Turn these social media observations into a structured weekly trend report.\n\nFindings this week:\n${findings.filter(Boolean).map((f, i) => `${i + 1}. ${f}`).join("\n")}\n\nFor each finding:\n- Clean up the description\n- Explain the POD potential in one sentence\n- Suggest 2 product types that would work\n- Flag any timing concerns (seasonal? already saturated?)\n\nFormat as a clean numbered list ready to hand off to Sheldon.`)}>
-                {loading ? "Generating…" : "Generate Trend Report (RESEARCH-02)"}
+              <Btn accent={accent} disabled={loading02 || !findings.filter(Boolean).length}
+                onClick={() => run02(`You are a print-on-demand trend researcher. Turn these social media observations into a structured weekly trend report.\n\nFindings this week:\n${findings.filter(Boolean).map((f, i) => `${i + 1}. ${f}`).join("\n")}\n\nFor each finding:\n- Clean up the description\n- Explain the POD potential in one sentence\n- Suggest 2 product types that would work\n- Flag any timing concerns (seasonal? already saturated?)\n\nFormat as a clean numbered list ready to hand off to Sheldon.`)}>
+                {loading02 ? "Generating…" : "Generate Trend Report (RESEARCH-02)"}
               </Btn>
             </div>
-            {loading && <Spinner accent={accent} />}
-            <OutputBox content={output} accent={accent} />
-            {output && (
+            {loading02 && <Spinner accent={accent} />}
+            <OutputBox content={output02} accent={accent} />
+            {output02 && (
               <Btn accent={accent} small secondary style={{ marginTop: 10 }} onClick={() => {
-                const report = { id: Date.now(), content: output, findings: findings.filter(Boolean), date: new Date().toDateString() };
+                const report = { id: Date.now(), content: output02, findings: findings.filter(Boolean), date: new Date().toDateString() };
                 update("trendReports", [report, ...state.trendReports]);
                 addNotification("founder", `📊 Sati's weekly trend report is ready — check Research inbox.`);
-                setOutput(""); setFindings(["", "", "", "", ""]);
+                setOutput02(""); setFindings(["", "", "", "", ""]);
                 alert("Report submitted to Sheldon ✓");
               }}>Submit Report to Sheldon →</Btn>
             )}
@@ -1045,13 +1058,13 @@ const OperationsDashboard = ({ state, update, addNotification }) => {
             <Select label="Current month" value={month} onChange={setMonth}
               options={["January","February","March","April","May","June","July","August","September","October","November","December"]} />
             <div style={{ marginTop: 10 }}>
-              <Btn accent={accent} disabled={loading} onClick={() => run(`You are a seasonal POD trend strategist. The current month is ${month}.\n\nProvide a seasonal planning guide for print-on-demand sellers on Amazon Merch and Redbubble.\n\n1. TOP OCCASIONS THIS MONTH — list every gifting occasion and holiday in the next 6 weeks with exact dates\n2. DESIGN THEMES TO BRIEF NOW — what should designers be creating this week to be live in time?\n3. NICHES PEAKING THIS MONTH — which buyer groups are most active right now?\n4. NEXT MONTH PREVIEW — what to start preparing for\n5. ONE QUICK WIN — single niche + design angle you could launch within 7 days\n\nBe specific with dates and design directions.`)}>
-                {loading ? "Generating…" : "Get Monthly Seasonal Guide (RESEARCH-03)"}
+              <Btn accent={accent} disabled={loading03} onClick={() => run03(`You are a seasonal POD trend strategist. The current month is ${month} ${new Date().getFullYear()}.\n\nProvide a seasonal planning guide for print-on-demand sellers on Amazon Merch and Redbubble.\n\n1. TOP OCCASIONS THIS MONTH — list every gifting occasion and holiday in the next 6 weeks with exact dates\n2. DESIGN THEMES TO BRIEF NOW — what should designers be creating this week to be live in time?\n3. NICHES PEAKING THIS MONTH — which buyer groups are most active right now?\n4. NEXT MONTH PREVIEW — what to start preparing for\n5. ONE QUICK WIN — single niche + design angle you could launch within 7 days\n\nBe specific with dates and design directions. Do not include any outdated year references.`)}>
+                {loading03 ? "Generating…" : "Get Monthly Seasonal Guide (RESEARCH-03)"}
               </Btn>
             </div>
-            {loading && <Spinner accent={accent} />}
-            <OutputBox content={output} accent={accent} />
-            {output && (
+            {loading03 && <Spinner accent={accent} />}
+            <OutputBox content={output03} accent={accent} />
+            {output03 && (
               <Btn accent={accent} small secondary style={{ marginTop: 10 }} onClick={() => {
                 addNotification("founder", `📅 Monthly seasonal guide for ${month} is ready — check Sati's Research tab.`);
                 alert("Sheldon notified ✓");
@@ -1845,7 +1858,7 @@ const SundayReview = ({ state, accent }) => {
     const ctx = buildContext();
     const prompt = `You are the operating system for a family print-on-demand business. Generate a Sunday Family Review based on this week's activity data.
 
-WEEK OF: ${new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
+WEEK OF: ${new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })}
 
 THIS WEEK'S DATA:
 - Briefs sent by Sheldon (Dad): ${ctx.briefs}
