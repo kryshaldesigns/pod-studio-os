@@ -202,7 +202,7 @@ const callClaude = async (prompt, onChunk) => {
       if (!key) { text = "Gemini API key not set — add REACT_APP_GEMINI_KEY to Vercel environment variables."; }
       else {
         const res = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${key}`,
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${key}`,
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -243,7 +243,7 @@ const callClaude = async (prompt, onChunk) => {
     if (onChunk) onChunk(text);
     return text;
   } catch (e) {
-    const err = `AI error (${model}) — check your connection and API key.`;
+    const err = `AI error — check your connection and API key. Model: ${model}`;
     if (onChunk) onChunk(err);
     return err;
   }
