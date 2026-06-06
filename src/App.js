@@ -2346,8 +2346,7 @@ const FounderOverview = ({ state, accent, setActivePage }) => {
 
   // Recent activity
   const activity = [
-    ...briefs.slice(0, 2).map(b => ({ icon: "📋", text: `Brief sent to Hayden — ${b.content?.split("
-")[0]?.replace("NICHE 1: ", "") || "Design brief"}`, time: b.created_at ? new Date(b.created_at).toLocaleDateString() : "Recently" })),
+    ...briefs.slice(0, 2).map(b => ({ icon: "📋", text: `Brief sent to Hayden — ${(b.content || "").split("\n")[0].replace("NICHE 1: ", "") || "Design brief"}`, time: b.created_at ? new Date(b.created_at).toLocaleDateString() : "Recently" })),
     ...trends.slice(0, 2).map(t => ({ icon: "📊", text: `Trend report submitted by Sati`, time: t.created_at ? new Date(t.created_at).toLocaleDateString() : "Recently" })),
     ...copies.slice(0, 2).map(c => ({ icon: "📝", text: `Listing copy generated for ${c.niche}`, time: c.created_at ? new Date(c.created_at).toLocaleDateString() : "Recently" })),
   ].slice(0, 5);
