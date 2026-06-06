@@ -2098,12 +2098,10 @@ Be specific with dates. The year is ${currentYear}. Do not reference any prior y
           <OutputBox content={output} accent={accent} />
           {!loading && (
             <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
-              {!isCached && (
-                <Btn accent={accent} small secondary onClick={() => {
-                  addNotification("founder", `📅 Monthly seasonal guide for ${month} ${currentYear} is ready — check Sati's Research tab.`);
-                  alert("Sheldon notified ✓");
-                }}>Notify Sheldon →</Btn>
-              )}
+              <Btn accent={accent} small secondary onClick={() => {
+                addNotification("founder", `📅 Monthly seasonal guide for ${month} ${currentYear} is ready — check Sati's Research tab.`);
+                alert("Sheldon notified ✓");
+              }}>Notify Sheldon →</Btn>
             </div>
           )}
         </div>
