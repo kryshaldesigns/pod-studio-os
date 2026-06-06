@@ -157,29 +157,130 @@ const useSharedState = (userRole) => {
 };
 
 // ============================================================
-// CLAUDE API CALL
+// AI MODEL SWITCHER
 // ============================================================
+// Active model stored in localStorage so it persists across sessions
+// Sheldon can switch from the header — all AI tools use this setting
+
+const AI_MODELS = {
+  gemini: {
+    id: "gemini",
+    label: "Gemini 1.5 Flash",
+    provider: "Google",
+    icon: "✦",
+    color: "#1a73e8",
+    free: true,
+  },
+  claude: {
+    id: "claude",
+    label: "Claude Sonnet",
+    provider: "Anthropic",
+    icon: "◆",
+    color: "#b5451b",
+    free: false,
+  },
+};
+
+const getActiveModel = () => {
+  try { return localStorage.getItem("pod_ai_model") || "gemini"; }
+  catch { return "gemini"; }
+};
+
+const setActiveModel = (id) => {
+  try { localStorage.setItem("pod_ai_model", id); }
+  catch {}
+};
+
+// Unified AI call — reads active model from localStorage
 const callClaude = async (prompt, onChunk) => {
+  const model = getActiveModel();
   try {
-    const res = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "claude-sonnet-4-20250514",
-        max_tokens: 1000,
-        stream: false,
-        messages: [{ role: "user", content: prompt }],
-      }),
-    });
-    const data = await res.json();
-    const text = data.content?.[0]?.text || "No response received.";
+    let text = "";
+
+    if (model === "gemini") {
+      const key = process.env.REACT_APP_GEMINI_KEY;
+      if (!key) { text = "Gemini API key not set — add REACT_APP_GEMINI_KEY to Vercel environment variables."; }
+      else {
+        const res = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: prompt }] }],
+              generationConfig: { maxOutputTokens: 1500, temperature: 0.7 },
+            }),
+          }
+        );
+        const data = await res.json();
+        if (data.error) text = `Gemini error: ${data.error.message}`;
+        else text = data.candidates?.[0]?.content?.parts?.[0]?.text || "No response received.";
+      }
+    } else {
+      const key = process.env.REACT_APP_ANTHROPIC_KEY;
+      if (!key) { text = "Anthropic API key not set — add REACT_APP_ANTHROPIC_KEY to Vercel environment variables."; }
+      else {
+        const res = await fetch("https://api.anthropic.com/v1/messages", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-api-key": key,
+            "anthropic-version": "2023-06-01",
+            "anthropic-dangerous-direct-browser-calls": "true",
+          },
+          body: JSON.stringify({
+            model: "claude-sonnet-4-20250514",
+            max_tokens: 1500,
+            messages: [{ role: "user", content: prompt }],
+          }),
+        });
+        const data = await res.json();
+        if (data.error) text = `Claude error: ${data.error.message}`;
+        else text = data.content?.[0]?.text || "No response received.";
+      }
+    }
+
     if (onChunk) onChunk(text);
     return text;
   } catch (e) {
-    const err = "API error — check connection.";
+    const err = `AI error (${model}) — check your connection and API key.`;
     if (onChunk) onChunk(err);
     return err;
   }
+};
+
+// Model selector pill component — shown in header (Sheldon only)
+const ModelSelector = () => {
+  const [active, setActive] = useState(getActiveModel());
+
+  const toggle = () => {
+    const next = active === "gemini" ? "claude" : "gemini";
+    setActiveModel(next);
+    setActive(next);
+  };
+
+  const model = AI_MODELS[active];
+  const other = AI_MODELS[active === "gemini" ? "claude" : "gemini"];
+
+  return (
+    <button
+      onClick={toggle}
+      title={`Currently using ${model.label}. Click to switch to ${other.label}.`}
+      style={{
+        display: "flex", alignItems: "center", gap: 6,
+        background: "#fff", border: `1.5px solid ${model.color}33`,
+        borderRadius: 8, padding: "5px 10px", cursor: "pointer",
+        transition: "all 0.15s", fontFamily: "'DM Sans', sans-serif",
+      }}
+    >
+      <span style={{ fontSize: 13, color: model.color, fontWeight: 800 }}>{model.icon}</span>
+      <span style={{ fontSize: 11, fontWeight: 700, color: model.color, letterSpacing: "0.02em" }}>{model.label}</span>
+      {model.free && (
+        <span style={{ fontSize: 9, background: "#dcfce7", color: "#166534", borderRadius: 4, padding: "1px 5px", fontWeight: 700, letterSpacing: "0.04em" }}>FREE</span>
+      )}
+      <span style={{ fontSize: 10, color: "#9ca3af", marginLeft: 2 }}>⇄</span>
+    </button>
+  );
 };
 
 // ============================================================
@@ -2109,6 +2210,7 @@ export default function App() {
           </div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          {user.role === "founder" && <ModelSelector />}
           <NotifBell notifications={notifications} onClear={(id) => clearNotification(id)} accent={accent} />
           <button
             onClick={handleSignOut}
