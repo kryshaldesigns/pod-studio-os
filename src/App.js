@@ -3020,6 +3020,7 @@ const LoginScreen = ({ onLogin }) => {
 export default function App() {
   const [user, setUser] = useState(null);
   const [authChecked, setAuthChecked] = useState(false);
+  const [activePage, setActivePage] = useState("dashboard");
 
   // On mount: check for existing session
   useEffect(() => {
@@ -3045,6 +3046,7 @@ export default function App() {
   const handleSignOut = async () => {
     await supabase.auth.signOut();
     setUser(null);
+    setActivePage("dashboard");
   };
 
   // Loading state while checking session
@@ -3136,8 +3138,6 @@ export default function App() {
       }
     }
   };
-
-  const [activePage, setActivePage] = useState("dashboard");
 
   // Page title mapping
   const pageTitle = {
