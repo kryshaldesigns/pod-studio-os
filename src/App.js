@@ -1001,10 +1001,9 @@ const OperationsDashboard = ({ state, update, addNotification, activePage }) => 
   return (
     <div>
 
-      {/* ── RESEARCH SECTIONS ── */}
-      {(activeTab === "dashboard" || activeTab === "capture" || activeTab === "report" || activeTab === "seasonal") && (
+      {/* ── RESEARCH-01: Trend Capture ── */}
+      {(activeTab === "dashboard" || activeTab === "capture") && (
         <div>
-
           {/* RESEARCH-01 */}
           <SectionTitle accent={accent}>Quick Trend Capture — RESEARCH-01</SectionTitle>
           <Alert accent={accent}>
@@ -1047,10 +1046,13 @@ const OperationsDashboard = ({ state, update, addNotification, activePage }) => 
               ))}
             </div>
           )}
+        </div>
+      )}
 
-          <div style={{ marginTop: 24 }}>
-            {/* RESEARCH-02 */}
-            <SectionTitle accent={accent}>Weekly Trend Report — RESEARCH-02</SectionTitle>
+      {/* ── RESEARCH-02: Weekly Report ── */}
+      {activeTab === "report" && (
+        <div>
+          <SectionTitle accent={accent}>Weekly Trend Report — RESEARCH-02</SectionTitle>
             <Alert accent={accent}>
               Fill in what you spotted this week — paste URLs, type quick notes, describe what you saw. Submit every Sunday evening.
             </Alert>
@@ -1080,26 +1082,26 @@ const OperationsDashboard = ({ state, update, addNotification, activePage }) => 
                 alert("Report submitted to Sheldon ✓");
               }}>Submit Report to Sheldon →</Btn>
             )}
-          </div>
-
-          <div style={{ marginTop: 24 }}>
-            {/* RESEARCH-03 — with Supabase caching */}
-            <ResearchO3
-              state={state}
-              update={update}
-              addNotification={addNotification}
-              accent={accent}
-              month={month}
-              setMonth={setMonth}
-            />
-          </div>
         </div>
       )}
 
-      {/* ── REDBUBBLE SECTIONS ── */}
-      {(activeTab === "rb" || activeTab === "rbrewrite" || activeTab === "customer") && (
+      {/* ── RESEARCH-03: Seasonal Watch ── */}
+      {activeTab === "seasonal" && (
         <div>
+          <ResearchO3
+            state={state}
+            update={update}
+            addNotification={addNotification}
+            accent={accent}
+            month={month}
+            setMonth={setMonth}
+          />
+        </div>
+      )}
 
+      {/* ── POD-01: RB Listing Generator ── */}
+      {activeTab === "rb" && (
+        <div>
           {/* POD-01 */}
           <SectionTitle accent={accent}>Redbubble Listing Generator — POD-01</SectionTitle>
           <Alert accent={accent}>Use when Hayden hands off completed designs. Generates full titles, tags, and descriptions for Redbubble.</Alert>
@@ -1123,10 +1125,13 @@ const OperationsDashboard = ({ state, update, addNotification, activePage }) => 
               alert("Hayden notified ✓");
             }}>Mark Done — Notify Hayden →</Btn>
           )}
+        </div>
+      )}
 
-          <div style={{ marginTop: 24 }}>
-            {/* POD-02 */}
-            <SectionTitle accent={accent}>Redbubble Listing Rewrite — POD-02</SectionTitle>
+      {/* ── POD-02: RB Listing Rewrite ── */}
+      {activeTab === "rbrewrite" && (
+        <div>
+          <SectionTitle accent={accent}>Redbubble Listing Rewrite — POD-02</SectionTitle>
             <Alert accent={accent}>Use after 3 weeks with zero views. Diagnoses why the listing isn't performing and rewrites it.</Alert>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
               <Field label="Current title" value={rwTitle} onChange={setRwTitle} placeholder="Paste current title" />
@@ -1141,11 +1146,13 @@ const OperationsDashboard = ({ state, update, addNotification, activePage }) => 
             </Btn>
             {loading && <Spinner accent={accent} />}
             <OutputBox content={output} accent={accent} />
-          </div>
+        </div>
+      )}
 
-          <div style={{ marginTop: 24 }}>
-            {/* POD-03 */}
-            <SectionTitle accent={accent}>Customer Query Reply — POD-03</SectionTitle>
+      {/* ── POD-03: Customer Query Reply ── */}
+      {activeTab === "customer" && (
+        <div>
+          <SectionTitle accent={accent}>Customer Query Reply — POD-03</SectionTitle>
             <Alert accent={accent}>Use when a buyer messages on Redbubble. Keeps replies warm, human, and on-brand.</Alert>
             <Field label="Their message" value={custMsg} onChange={setCustMsg} multiline placeholder="Paste the customer's message here…" />
             <Field label="What they seem to want" value={custWant} onChange={setCustWant}
@@ -1154,9 +1161,8 @@ const OperationsDashboard = ({ state, update, addNotification, activePage }) => 
               onClick={() => run(`Write a friendly, helpful reply to this customer message on Redbubble.\n\nTheir message: ${custMsg}\nWhat they seem to want: ${custWant}\n\nContext:\n- We are the designer, not the printer or shipper\n- Redbubble handles all fulfilment and customer service for orders\n- We genuinely care about our buyers\n\nIf it is a shipping or order issue: sympathise briefly, direct to Redbubble support at redbubble.com/help, wish them a resolution.\nIf it is a design question: answer warmly and helpfully.\n\nKeep the reply under 5 sentences. Warm, human, not corporate.`)}>
               {loading ? "Writing…" : "Write Customer Reply (POD-03)"}
             </Btn>
-            {loading && <Spinner accent={accent} />}
-            <OutputBox content={output} accent={accent} />
-          </div>
+          {loading && <Spinner accent={accent} />}
+          <OutputBox content={output} accent={accent} />
         </div>
       )}
 
